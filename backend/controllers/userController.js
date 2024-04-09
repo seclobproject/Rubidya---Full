@@ -15,6 +15,13 @@ import Revenue from "../models/revenueModel.js";
 import ProfilePic from "../models/profilePicModel.js";
 import mongoose from "mongoose";
 
+import multer from "multer";
+import path from "path";
+
+import moment from "moment"
+
+
+
 const generateRandomString = () => {
   const baseString = "RBD";
   const randomDigits = Math.floor(Math.random() * 999999);
@@ -797,7 +804,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
     res.status(400).json({ sts: "00", msg: "No file uploaded" });
   }
 
-  const { description } = req.body;
+  const { description, story } = req.body;
 
   const { path: filePath, mimetype: fileType, filename: fileName } = req.file;
 
@@ -809,6 +816,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
     fileName,
     description,
     filePath,
+    story
   });
 
   if (media) {
@@ -1289,6 +1297,30 @@ export const getFollowing = asyncHandler(async (req, res) => {
   }
 });
 
+
+// Get the followers
+export const getFollowers = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const user = await User.findById(userId)
+    .select("followers")
+    .populate({
+      path: "followers",
+      select: "firstName lastName profilePic",
+      populate: { path: "profilePic", select: "filePath" },
+    });
+
+  if (user) {
+    res.status(200).json({
+      sts: "01",
+      msg: "Followers fetched successfully",
+      followers: user.followers,
+    });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No following found" });
+  }
+});
+
 // Get the level tree
 export const getLevelTree = asyncHandler(async (req, res) => {
   // Get user
@@ -1298,4 +1330,100 @@ export const getLevelTree = asyncHandler(async (req, res) => {
   const user = await User.findById(userId).populate("referrals");
 
   console.log(user.referrals);
+});
+
+
+// Set storage engine
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/videos/') // Save uploaded files to the 'uploads/videos' folder
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname)) // Add timestamp to the filename to avoid duplicates
+  }
+});
+
+// Initialize upload
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 1000000000000000000000 }, // Set file size limit if needed
+  fileFilter: function (req, file, cb) {
+    checkFileType(file, cb);
+  }
+
+}).single('video'); // 'video' is the name attribute of the file input field 
+
+
+// Check file type
+function checkFileType(file, cb) {
+  const filetypes = /mp4|avi|mkv|mov|wmv/; // Add more file types if needed
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = filetypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb('Error: Videos only!');
+  }
+}
+
+//Function to handle video upload
+export const videoUpload = asyncHandler(async (req, res) => {
+  upload(req, res, async (err) => {
+
+
+    if (err) {
+      console.error(err);
+      res.status(400).send('Error uploading file!');
+    } else {
+      if (req.file == undefined) {
+        res.status(400).send('No file selected!');
+      } else {
+
+        const createMedia = await Media.create({
+          userId: req.user._id,
+          fileType: req.file.mimetype,
+          fileName: req.file.filename,
+          filePath: req.file.path
+        });
+
+        res.send('File uploaded successfully!');
+      }
+    }
+  });
+});
+
+//Function to get stories of a user
+export const getStory = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  //Fetching data from media against userId and story:true
+  const media = await Media.find({ userId, story: true })
+
+  //Subtracting 24 hours from current time inorder to get only 24 hours feed of user
+  let subtractedTime = moment().subtract(24, 'hours')
+
+  //Formatting the subtracted time
+  let formattedSubtractedTime = subtractedTime.format('YYYY-MM-DD,HH:mm:ss')
+
+  let mediaData = [];
+
+  //Maping through the media data
+  for (const data of media) {
+
+
+    //Formatting created time of media
+    let mediaFormattedTime = moment(data.createdAt).format('YYYY-MM-DD,HH:mm:ss')
+
+    //Checking the condition
+    if (mediaFormattedTime > formattedSubtractedTime) {
+
+      mediaData.push(data)
+    }
+  }
+  if (media) {
+    res.status(200).json({ sts: "01", msg: "Success", media:mediaData });
+  } else {
+    res.status(404).json({ sts: "00", msg: "No media found" });
+  }
 });

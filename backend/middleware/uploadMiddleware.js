@@ -30,6 +30,7 @@ export const upload = multer({
 
 // Middleware to resize and compress images before saving
 export const resizeAndCompressImage = async (req, res, next) => {
+  const { story } = req.body;
   if (!req.file) {
     return res.status(400).json({ sts: "00", msg: "No file uploaded" });
   }
@@ -49,11 +50,22 @@ export const resizeAndCompressImage = async (req, res, next) => {
 
     // Write compressed image buffer to disk
     try {
-      fs.writeFileSync(
-        `/var/www/seclob/rubidya/uploads/${randomFilename}`,
-        // `uploads/${randomFilename}`,
-        compressedBuffer
-      );
+
+      //Checking if story variable exist or not,if exist image will be saved to story folder
+      if (story) {
+        fs.writeFileSync(
+          `/var/www/seclob/rubidya/uploads/story/${randomFilename}`,
+          // `uploads/story/${randomFilename}`,
+          compressedBuffer
+        );
+      } else {
+
+        fs.writeFileSync(
+          `/var/www/seclob/rubidya/uploads/${randomFilename}`,
+          // `uploads/${randomFilename}`,
+          compressedBuffer
+        );
+      }
     } catch (error) {
       console.error(error);
     }

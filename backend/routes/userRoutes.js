@@ -11,6 +11,9 @@ import {
   follow,
   getDirectReferredUsers,
   getFollowing,
+  getFollowers,
+  videoUpload,
+  getStory,
   getLevelTree,
   getMedia,
   getProfilePicture,
@@ -139,6 +142,16 @@ router.route("/get-suggestions").get(protect, getSuggestions);
 
 // Get following
 router.route("/get-following").get(protect, getFollowing);
+
+// Get followers
+router.route("/get-followers").get(protect, getFollowers);
+
+// Get followers
+router.route("/get-story").get(protect, getStory);
+
+//Video uploading
+
+router.route("/upload-videos").post(protect,videoUpload)
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);

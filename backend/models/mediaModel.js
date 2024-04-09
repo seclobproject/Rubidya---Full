@@ -33,6 +33,10 @@ const mediaSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    story: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
