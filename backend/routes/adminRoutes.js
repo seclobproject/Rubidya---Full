@@ -14,7 +14,7 @@ import {
   splitProfit,
 } from "../controllers/adminController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { addPackage, editPackage } from "../controllers/packageController.js";
+import { addPackage, editPackage, getUsersByPackage } from "../controllers/packageController.js";
 const router = express.Router();
 
 // Get all users to admin
@@ -55,6 +55,9 @@ router.route("/get-revenue").get(protect, getRevenueToAdmin)
 
 // Get the level tree
 router.route("/get-level-tree").get(protect, getLevelTree);
+
+// Get users based on packages
+router.route("/get-users-by-package").get(protect, getUsersByPackage);
 
 // Share splitting
 // router.route("/share-splitting").get(protect, shareSplitting);

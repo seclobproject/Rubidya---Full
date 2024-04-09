@@ -149,3 +149,28 @@ export const selectPackage = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// Get users based on packages
+export const getUsersByPackage = asyncHandler(async (req, res) => {
+  const { packageId } = req.body;
+
+  if (!packageId) {
+    res.status(400).json({
+      sts: "00",
+      msg: "Please select a package",
+    });
+  } else {
+    const users = await Package.findById(packageId)
+      .populate(
+        "users",
+        "createdAt firstName lastName email phone payId isAccountVerified"
+      )
+      .select("users");
+
+    if (users) {
+      res.status(200).json({ sts: "01", msg: "Success", users: users.users });
+    } else {
+      res.status(404).json({ sts: "00", msg: "No package found" });
+    }
+  }
+});

@@ -4,6 +4,7 @@ import LevelConfig from '../pages/LevelConfig';
 import Register from '../pages/Authentication/Register';
 import ManagePackages from '../pages/ManagePackages';
 import AllMembersList from '../pages/AllMembersList';
+import PackageMembers from '../pages/PackageMembers';
 const IndexSales = lazy(() => import('../pages/Indexsales'));
 const Index = lazy(() => import('../pages/Index'));
 const Analytics = lazy(() => import('../pages/Analytics'));
@@ -112,13 +113,17 @@ const routes = [
         path: '/',
         element: <Index />,
     },
-    {
-        path: '/all-members',
-        element: <AllMembers />,
-    },
+    // {
+    //     path: '/all-members',
+    //     element: <AllMembers />,
+    // },
     {
         path: '/all-members-list',
         element: <AllMembersList />,
+    },
+    {
+        path: '/package-members/:packageId',
+        element: <PackageMembers />,
     },
     {
         path: '/login',

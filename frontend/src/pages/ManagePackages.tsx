@@ -8,10 +8,13 @@ import IconPlus from '../components/Icon/IconPlus';
 import { Dialog, Transition, Tab } from '@headlessui/react';
 import EditPackagePopup from '../components/EditPackagePopup';
 import IconMinus from '../components/Icon/IconMinus';
+import { useNavigate } from 'react-router-dom';
 
 type Benefit = string;
 
 const ManagePackages = () => {
+    const navigate = useNavigate();
+
     const dispatch = useAppDispatch();
 
     const { loading, data: rowData, error } = useAppSelector((state: any) => state.getPackage);
@@ -116,6 +119,10 @@ const ManagePackages = () => {
         const newBenefits = [...benefits];
         newBenefits.splice(index, 1);
         setBenefits(newBenefits);
+    };
+
+    const viewUsersHandler = (packageId: string) => {
+        navigate(`/package-members/${packageId}`);
     };
 
     return (
@@ -252,7 +259,7 @@ const ManagePackages = () => {
                             { accessor: 'memberProfit', title: 'Member Profit' },
                             { accessor: 'Actions 02', title: 'Count of Users', render: (eachPackage: any) => <>{eachPackage.users.length}</> },
                             {
-                                accessor: 'Actions',
+                                accessor: 'Action 01',
                                 title: 'Edit Package',
                                 render: (packages: any) => (
                                     <div className="space-x-2">
@@ -262,6 +269,21 @@ const ManagePackages = () => {
                                             className="bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white p-2 rounded-lg"
                                         >
                                             Edit Package
+                                        </button>
+                                    </div>
+                                ),
+                            },
+                            {
+                                accessor: 'Action 02',
+                                title: 'View Users',
+                                render: (packages: any) => (
+                                    <div className="space-x-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => viewUsersHandler(packages._id)}
+                                            className="bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 text-white p-2 rounded-lg"
+                                        >
+                                            View Users
                                         </button>
                                     </div>
                                 ),
