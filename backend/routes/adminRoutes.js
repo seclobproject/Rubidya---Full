@@ -5,6 +5,7 @@ import {
   editProfileByAdmin,
   getAllLevelPercentages,
   getAllusers,
+  getLevelTree,
   getRevenueToAdmin,
   getUsersCount,
   handleActivation,
@@ -51,6 +52,9 @@ router.route("/edit-user").put(protect, editProfileByAdmin)
 
 // Get revenue to admin
 router.route("/get-revenue").get(protect, getRevenueToAdmin)
+
+// Get the level tree
+router.route("/get-level-tree").get(protect, getLevelTree);
 
 // Share splitting
 // router.route("/share-splitting").get(protect, shareSplitting);

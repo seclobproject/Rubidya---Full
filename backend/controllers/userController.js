@@ -429,7 +429,11 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   let user = await User.findOne({ email });
   if (!user) {
-    user = await User.findOne({ phone: parseInt(email) });
+    if (parseInt(email)) {
+      user = await User.findOne({ phone: parseInt(email) });
+    } else {
+      res.status(401).json({ sts: "00", msg: "User does not exist" });
+    }
   }
 
   if (user && (await user.matchPassword(password))) {
@@ -468,7 +472,7 @@ export const loginUser = asyncHandler(async (req, res) => {
       msg: "Success",
     });
   } else {
-    res.status(401).json({ sts: "00", msg: "Login failed" });
+    res.status(401).json({ sts: "00", msg: "User does not exist" });
   }
 });
 
@@ -711,33 +715,33 @@ export const verifyUser = asyncHandler(async (req, res) => {
               }
 
               // Update the remaining amount to the payId: RBD004779237
-              // const remainingAmount = amount - totalCommission;
+              const remainingAmount = amount - totalCommission;
 
-              // const payId = "RBD004779237";
-              // const uniqueId = "66000acbcfaa5d4ccb97b313";
+              const payId = "RBD004779237";
+              const uniqueId = "66000acbcfaa5d4ccb97b313";
 
-              // const response = await axios.post(
-              //   "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
-              //   { payId, uniqueId, amount: remainingAmount, currency: "RBD" }
-              // );
+              const response = await axios.post(
+                "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
+                { payId, uniqueId, amount: remainingAmount, currency: "RBD" }
+              );
 
-              // if (response.data.success === 1) {
-              //   console.log("Successfully added to payId: RBD004779237");
-              const updatedUser = await user.save();
+              if (response.data.success === 1) {
+                console.log("Successfully added to payId: RBD004779237");
+                const updatedUser = await user.save();
 
-              if (updatedUser) {
-                res
-                  .status(200)
-                  .json({ sts: "01", msg: "User verified successfully" });
+                if (updatedUser) {
+                  res
+                    .status(200)
+                    .json({ sts: "01", msg: "User verified successfully" });
+                } else {
+                  res.status(400).json({ sts: "00", msg: "User not verified" });
+                }
               } else {
-                res.status(400).json({ sts: "00", msg: "User not verified" });
+                console.log("Failed to add to payId: RBD004779237");
+                res
+                  .status(400)
+                  .json({ sts: "00", msg: "Failed to add to payId" });
               }
-              // } else {
-              //   console.log("Failed to add to payId: RBD004779237");
-              //   res
-              //     .status(400)
-              //     .json({ sts: "00", msg: "Failed to add to payId" });
-              // }
             }
           } else {
             res.status(400).json({
@@ -1287,15 +1291,4 @@ export const getFollowing = asyncHandler(async (req, res) => {
   } else {
     res.status(400).json({ sts: "00", msg: "No following found" });
   }
-});
-
-// Get the level tree
-export const getLevelTree = asyncHandler(async (req, res) => {
-  // Get user
-  const { userId } = req.body;
-
-  // Get the referred users
-  const user = await User.findById(userId).populate("referrals");
-
-  console.log(user.referrals);
 });

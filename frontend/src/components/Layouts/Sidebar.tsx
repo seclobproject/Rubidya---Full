@@ -97,7 +97,7 @@ const Sidebar = () => {
                                         </NavLink>
                                     </li>
                                     <li className="nav-item">
-                                        <NavLink to="/all-members" className="group">
+                                        <NavLink to="/all-members-list" className="group">
                                             <div className="flex items-center">
                                                 <span className="ltr:pl-3 rtl:pr-3 text-black dark:text-[#506690] dark:group-hover:text-white-dark">{t('All Members')}</span>
                                             </div>

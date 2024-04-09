@@ -1,11 +1,17 @@
 import React, { Fragment, useEffect, useState } from 'react';
 import Dropdown from '../components/Dropdown';
 import { apiCall } from '../Services/apiCall';
-import { Dialog, Transition, Tab } from '@headlessui/react';
 import Swal from 'sweetalert2';
 import ShowEditModal from '../components/ShowEditModal';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const AllMembersList = () => {
+
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const userId = searchParams.get('userId');
+
+    const navigate = useNavigate();
 
     const [tableData, setTableData] = useState<any[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -13,20 +19,41 @@ const AllMembersList = () => {
     const [showWalletloader, setshowWalletLoader] = useState(false);
     const [search, setSearch] = useState('');
     const [totalPages, setTotalPages] = useState(1);
-    const [limitPerPage, setLimitPerPage] = useState(5);
+    const [limitPerPage, setLimitPerPage] = useState(10);
     const [modal21, setModal21] = useState(false);
+    const [activeHandler, setActiveHandler] = useState(0);
+
+    const [selectedUser, setSelectedUser] = useState({
+        id: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        countryCode: '',
+        phone: '',
+    });
 
     // Function to fetch users
     const fetchUsers = async () => {
         setLoader(true);
-        const response = await apiCall('/api/admin/get-all-users', 'get', '', { page: currentPage, limit: limitPerPage });
+
+        let response;
+        
+        if (userId) {
+            response = await apiCall('/api/admin/get-level-tree', 'get', '', { userId, page: currentPage, limit: limitPerPage });
+        } else {
+            response = await apiCall('/api/admin/get-all-users', 'get', '', { page: currentPage, limit: limitPerPage });
+        }
 
         if (response?.status === 200) {
-            setTableData(response?.data.users);
-            setTotalPages(Math.ceil(response?.data.users.length / limitPerPage));
+            setTableData(response?.data.users.referrals || response?.data.users);
+            if (response?.data.users.length > 0) {
+                setTotalPages(Math.ceil(response?.data.users.length / limitPerPage));
+            }
             setLoader(false);
         } else {
-            setCurrentPage((prevPage) => prevPage - 1);
+            if (currentPage > 1) {
+                setCurrentPage((prevPage) => prevPage - 1);
+            }
             Swal.fire({
                 icon: 'error',
                 text: 'No users found!',
@@ -37,7 +64,7 @@ const AllMembersList = () => {
 
     useEffect(() => {
         fetchUsers();
-    }, [currentPage]);
+    }, [currentPage, modal21, activeHandler, userId]);
 
     // Function to handle change in search input
     const handleSearch = async () => {
@@ -51,6 +78,30 @@ const AllMembersList = () => {
             } else {
                 setLoader(false);
             }
+        }
+    };
+
+    // Function to handle activation/de-activation
+    const showAlert = async (type: number) => {
+        if (type === 1) {
+            Swal.fire({
+                title: 'Updated succesfully',
+                padding: '2em',
+                customClass: 'sweet-alerts',
+            });
+        }
+    };
+
+    const handleActivation = async (data: any) => {
+        setLoader(true);
+        const response = await apiCall(`/api/admin/activation-handle`, 'post', data);
+
+        if (response?.status === 201) {
+            setLoader(false);
+            setActiveHandler(activeHandler + 1);
+            showAlert(1);
+        } else {
+            setLoader(false);
         }
     };
 
@@ -126,9 +177,27 @@ const AllMembersList = () => {
         }
     };
 
-    const showEditModalHandler = () => {
+    const showEditModalHandler = (user: any) => {
+        setSelectedUser({
+            id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            countryCode: user.countryCode,
+            phone: user.phone,
+        });
+
         setModal21(true);
-    }
+    };
+
+    const activationHandler = (userId: string, currentStatus: boolean) => {
+        let status = !currentStatus;
+        handleActivation({ userId, status });
+    };
+
+    const fetchTree = (userId: string) => {
+        navigate(`/all-members-list?userId=${userId}`);
+    };
 
     return (
         <Fragment>
@@ -170,6 +239,7 @@ const AllMembersList = () => {
                                 <th>Pay ID</th>
                                 <th>Status</th>
                                 <th className="text-center">Wallet Amount</th>
+                                <th className="text-center">Tree</th>
                                 <th className="text-center">Action</th>
                             </tr>
                         </thead>
@@ -205,6 +275,11 @@ const AllMembersList = () => {
                                                     </button>
                                                 )}
                                             </td>
+                                            <td>
+                                                <button onClick={() => fetchTree(data._id)} className="badge whitespace-nowrap badge-outline-info p-2 rounded-lg">
+                                                    Show Tree
+                                                </button>
+                                            </td>
                                             <td className="text-center">
                                                 <div className="dropdown">
                                                     <Dropdown
@@ -220,16 +295,14 @@ const AllMembersList = () => {
                                                     >
                                                         <ul>
                                                             <li>
-                                                                <button type="button" onClick={showEditModalHandler}>Edit</button>
+                                                                <button type="button" onClick={() => showEditModalHandler(data)}>
+                                                                    Edit
+                                                                </button>
                                                             </li>
                                                             <li>
-                                                                <button type="button">{data.acStatus ? 'De-activate' : 'Activate'}</button>
-                                                            </li>
-                                                            <li>
-                                                                <button type="button">Edit</button>
-                                                            </li>
-                                                            <li>
-                                                                <button type="button">Delete</button>
+                                                                <button onClick={() => activationHandler(data._id, data.acStatus)} type="button">
+                                                                    {data.acStatus ? 'De-activate' : 'Activate'}
+                                                                </button>
                                                             </li>
                                                         </ul>
                                                     </Dropdown>
@@ -255,9 +328,8 @@ const AllMembersList = () => {
                     </div>
                 </div>
                 {/* Pagination part */}
-                
             </div>
-            {modal21 && (<ShowEditModal />)}
+            {modal21 && <ShowEditModal modal21={modal21} setModal21={setModal21} selectedUser={selectedUser} />}
         </Fragment>
     );
 };

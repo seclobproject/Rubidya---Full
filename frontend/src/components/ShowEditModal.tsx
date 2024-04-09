@@ -1,12 +1,53 @@
 import { Dialog, Transition, Tab } from '@headlessui/react';
-import React, { Fragment } from 'react';
+import React, { Fragment, useState } from 'react';
+import { apiCall } from '../Services/apiCall';
 
 interface Props {
     modal21: any;
     setModal21: any;
+    selectedUser: any;
 }
 
-const ShowEditModal: React.FC<Props> = ({ modal21, setModal21 }) => {
+const ShowEditModal: React.FC<Props> = ({ modal21, setModal21, selectedUser }) => {
+    const [user, setUser] = useState(selectedUser);
+    const [loader, setLoader] = useState(false);
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    // Function to edit user
+    const editUser = async (data: object) => {
+        setLoader(true);
+        const response = await apiCall('/api/admin/edit-user', 'put', data);
+
+        if (response?.status === 200) {
+            setLoader(false);
+        } else {
+            setLoader(false);
+        }
+    };
+
+    const editUserDetailsHandler = () => {
+        if (password !== '' && password.length < 8) {
+            setError('Password must be at least 8 characters long');
+            setTimeout(() => {
+                setError('');
+            }, 2500);
+            return;
+        }
+
+        const data = {
+            userId: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone,
+            countryCode: user.countryCode,
+            password,
+        };
+
+        editUser(data);
+    };
+
     return (
         <>
             <Transition appear show={modal21} as={Fragment}>
@@ -40,28 +81,28 @@ const ShowEditModal: React.FC<Props> = ({ modal21, setModal21 }) => {
                                             <div className="relative mb-4">
                                                 <input
                                                     type="text"
-                                                    defaultValue={selectedUser && selectedUser.firstName}
-                                                    onChange={(e) => setChangedFirstName(e.target.value)}
+                                                    defaultValue={user && user.firstName}
+                                                    onChange={(e) => setUser({ ...user, firstName: e.target.value })}
                                                     placeholder="First Name"
                                                     className="form-input"
-                                                    id="name"
+                                                    id="firstName"
                                                 />
                                             </div>
                                             <div className="relative mb-4">
                                                 <input
                                                     type="text"
-                                                    defaultValue={selectedUser && selectedUser.lastName}
-                                                    onChange={(e) => setChangedLastName(e.target.value)}
+                                                    defaultValue={user && user.lastName}
+                                                    onChange={(e) => setUser({ ...user, lastName: e.target.value })}
                                                     placeholder="Last Name"
                                                     className="form-input"
-                                                    id="name"
+                                                    id="lastName"
                                                 />
                                             </div>
                                             <div className="relative mb-4">
                                                 <input
                                                     type="email"
-                                                    defaultValue={selectedUser && selectedUser.email}
-                                                    onChange={(e) => setChangedEmail(e.target.value)}
+                                                    defaultValue={user && user.email}
+                                                    onChange={(e) => setUser({ ...user, email: e.target.value })}
                                                     placeholder="Email"
                                                     className="form-input"
                                                     id="email"
@@ -70,8 +111,8 @@ const ShowEditModal: React.FC<Props> = ({ modal21, setModal21 }) => {
                                             <div className="relative mb-4">
                                                 <input
                                                     type="number"
-                                                    defaultValue={selectedUser && selectedUser.countryCode}
-                                                    onChange={(e) => setChangedCountryCode(e.target.value)}
+                                                    defaultValue={user && user.countryCode}
+                                                    onChange={(e) => setUser({ ...user, countryCode: e.target.value })}
                                                     placeholder="Country Code"
                                                     className="form-input"
                                                     id="countryCode"
@@ -80,29 +121,25 @@ const ShowEditModal: React.FC<Props> = ({ modal21, setModal21 }) => {
                                             <div className="relative mb-4">
                                                 <input
                                                     type="number"
-                                                    defaultValue={selectedUser && selectedUser.phone}
-                                                    onChange={(e) => setChangedPhone(e.target.value)}
+                                                    defaultValue={user && user.phone}
+                                                    onChange={(e) => setUser({ ...user, phone: e.target.value })}
                                                     placeholder="Phone"
                                                     className="form-input"
                                                     id="phone"
                                                 />
                                             </div>
                                             <div className="relative mb-4">
-                                                <label className="inline-flex mb-0 cursor-pointer">
-                                                    <input
-                                                        type="checkbox"
-                                                        defaultChecked={selectedUser && selectedUser.isAccountVerified}
-                                                        onChange={(e) => setChangedVerification(e.target.checked)}
-                                                        className="form-checkbox"
-                                                    />
-                                                    <span className="text-white-dark">Verified</span>
-                                                </label>
+                                                <input type="password" onChange={(e) => setPassword(e.target.value)} placeholder="Change Password" className="form-input" id="password" />
                                             </div>
-                                            <div className="relative mb-4">
-                                                <input type="password" placeholder="Change Password" className="form-input" id="password" />
-                                            </div>
+                                            <div className='text-xs text-center mb-5 text-danger'>{error ?? ''}</div>
                                             <button type="button" onClick={editUserDetailsHandler} className="btn btn-primary w-full">
-                                                Submit
+                                                {loader ? (
+                                                    <div className="flex justify-center">
+                                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white-light"></div>
+                                                    </div>
+                                                ) : (
+                                                    'Submit'
+                                                )}
                                             </button>
                                         </form>
                                     </div>

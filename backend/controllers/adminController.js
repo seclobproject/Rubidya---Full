@@ -58,8 +58,6 @@ export const searchAllusers = asyncHandler(async (req, res) => {
 export const getAllusers = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
-  
-  console.log(page, limit);
 
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
@@ -74,7 +72,6 @@ export const getAllusers = asyncHandler(async (req, res) => {
     .limit(limit);
 
   if (users.length > 0) {
-
     const pagination = {};
 
     if (endIndex < userCount) {
@@ -91,11 +88,9 @@ export const getAllusers = asyncHandler(async (req, res) => {
       };
     }
 
-
     res
       .status(200)
       .json({ users, pagination, sts: "01", msg: "Fetched successfully" });
-
   } else {
     res.status(404).json({ message: "No users found" });
   }
@@ -289,11 +284,11 @@ export const handleActivation = asyncHandler(async (req, res) => {
 
     if (updatedUser) {
       res.status(201).json({
-        message: "User updated successfully",
+        msg: "User updated successfully",
       });
     } else {
       res.status(400).json({
-        message: "Error updating user",
+        msg: "Error updating user",
       });
     }
   }
@@ -301,16 +296,10 @@ export const handleActivation = asyncHandler(async (req, res) => {
 
 // Edit profile
 export const editProfileByAdmin = asyncHandler(async (req, res) => {
-  const {
-    firstName,
-    lastName,
-    email,
-    phone,
-    countryCode,
-    isVerified,
-    password,
-    userId,
-  } = req.body;
+  const { firstName, lastName, email, phone, countryCode, password, userId } =
+    req.body;
+
+  console.log(firstName, lastName, email, phone, countryCode, password, userId);
 
   if (userId) {
     const user = await User.findById(userId);
@@ -323,11 +312,9 @@ export const editProfileByAdmin = asyncHandler(async (req, res) => {
       user.phone = phone || user.phone;
       user.countryCode = countryCode || user.countryCode;
 
-      if (user.isAccountVerified !== isVerified) {
-        user.isAccountVerified = isVerified;
+      if (password.length > 0) {
+        user.password = password || user.password;
       }
-
-      user.password = password || user.password;
 
       const updateUser = await user.save();
 
@@ -397,3 +384,38 @@ export const editProfileByAdmin = asyncHandler(async (req, res) => {
 //     }
 //   }
 // });
+
+// Get the level tree
+export const getLevelTree = asyncHandler(async (req, res) => {
+  // Get user
+  const { userId } = req.query;
+
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+
+  const userCount = await User.countDocuments({});
+
+  // Get the referred users
+  const users = await User.findById(userId)
+    .populate(
+      "referrals",
+      "createdAt firstName lastName email phone isAccountVerified payId countryCode acStatus"
+    )
+    .select("referrals")
+    .skip(startIndex)
+    .limit(limit);
+
+  if (users) {
+    res.status(200).json({
+      msg: "Level tree fetched successfully",
+      users,
+    });
+  } else {
+    res.status(400).json({
+      msg: "Error fetching level tree",
+    });
+  }
+});

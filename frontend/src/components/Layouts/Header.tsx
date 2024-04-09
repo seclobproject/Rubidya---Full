@@ -173,7 +173,7 @@ const Header = () => {
                         </NavLink>
                     </li>
                     <li className="menu nav-item relative">
-                        <NavLink to="/all-members">
+                        <NavLink to="/all-members-list">
                             <button type="button" className="nav-link">
                                 <div className="flex items-center">
                                     <span className="px-1">{t('All Members')}</span>

@@ -11,7 +11,7 @@ import {
   follow,
   getDirectReferredUsers,
   getFollowing,
-  getLevelTree,
+  
   getMedia,
   getProfilePicture,
   getStats,
@@ -130,9 +130,6 @@ router.route("/follow").post(protect, follow);
 
 // Unfollow a person
 router.route("/unfollow").post(protect, unfollow);
-
-// Get the level tree
-router.route("/get-level-tree").get(protect, getLevelTree);
 
 // Get suggestions
 router.route("/get-suggestions").get(protect, getSuggestions);

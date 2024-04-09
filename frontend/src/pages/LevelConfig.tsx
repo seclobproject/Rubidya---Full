@@ -26,7 +26,7 @@ const LevelConfig: React.FC = () => {
     const { data: getPercentagesData } = useAppSelector((state: any) => state.getPercentages);
     const { data: editPercentagesData } = useAppSelector((state: any) => state.editPercentages);
 
-    const [levels, setLevels] = useState([{ level: 10, percentage: '' }]);
+    const [levels, setLevels] = useState([{ level: 1, percentage: '' }]);
     const [editLevel, setEditLevel] = useState({ level: 0, percentage: 0 });
     const dispatch = useAppDispatch();
 
@@ -49,9 +49,9 @@ const LevelConfig: React.FC = () => {
     };
 
     const handleAddField = () => {
-        if (levels.length < 10) {
-            setLevels((prevLevels) => [...prevLevels, { level: 10 - levels.length, percentage: '' }]);
-        }
+        // if (levels.length < 10) {
+            setLevels((prevLevels) => [...prevLevels, { level: 1 + levels.length, percentage: '' }]);
+        // }
     };
 
     const handleSubmit = (event: any) => {
@@ -92,7 +92,7 @@ const LevelConfig: React.FC = () => {
                 <input
                     key={10 - (index + 1)}
                     type="number"
-                    placeholder={`Level ${10 - (index + 1)}%`}
+                    placeholder={`Level ${(index + 2)}%`}
                     className="form-input mb-2"
                     value={level.percentage}
                     onChange={(e) => handleInputChange(index + 1, e.target.value)}
@@ -108,7 +108,7 @@ const LevelConfig: React.FC = () => {
                     <h3 className="m-0 dark:text-white-dark">Add 10 level percentages</h3>
                 </div>
                 <div className="lg:flex gap-2">
-                    <input key={0} type="text" placeholder="Level 10%" className="form-input mb-2" value={levels[0].percentage} onChange={(e) => handleInputChange(0, e.target.value)} required />
+                    <input key={0} type="text" placeholder="Level 1%" className="form-input mb-2" value={levels[0].percentage} onChange={(e) => handleInputChange(0, e.target.value)} required />
                     {renderInputFields()}
                 </div>
                 <div className="flex gap-1">
