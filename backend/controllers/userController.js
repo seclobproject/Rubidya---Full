@@ -778,6 +778,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(userId)
     .populate("packageSelected")
     .select("-password");
+
   if (user) {
     const response = {
       sts: "01",
@@ -787,6 +788,8 @@ export const getUserProfile = asyncHandler(async (req, res) => {
         updatedDOB: user.dateOfBirth
           ? convertDate(user.dateOfBirth)
           : convertDate(user.createdAt),
+        followersCount: user.followers.length,
+        followingCount: user.following.length,
       },
     };
     res.status(200).json(response);
@@ -829,8 +832,11 @@ export const getMedia = asyncHandler(async (req, res) => {
     "userId",
     "firstName lastName"
   );
+
   if (media) {
-    res.status(200).json({ sts: "01", msg: "Success", media });
+    res
+      .status(200)
+      .json({ sts: "01", msg: "Success", postCount: media.length, media });
   } else {
     res.status(404).json({ sts: "00", msg: "No media found" });
   }
