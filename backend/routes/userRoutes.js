@@ -10,6 +10,7 @@ import {
   editUserProfile,
   follow,
   getDirectReferredUsers,
+  getFollowers,
   getFollowing,
   
   getMedia,
@@ -136,6 +137,9 @@ router.route("/get-suggestions").get(protect, getSuggestions);
 
 // Get following
 router.route("/get-following").get(protect, getFollowing);
+
+// Get followers
+router.route("/get-followers").get(protect, getFollowers);
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);

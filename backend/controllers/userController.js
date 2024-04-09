@@ -1292,3 +1292,24 @@ export const getFollowing = asyncHandler(async (req, res) => {
     res.status(400).json({ sts: "00", msg: "No following found" });
   }
 });
+
+// Get the followers
+export const getFollowers = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const user = await User.findById(userId)
+    .select("followers")
+    .populate({
+      path: "followers",
+      select: "firstName lastName profilePic",
+      populate: { path: "profilePic", select: "filePath" },
+    });
+  if (user) {
+    res.status(200).json({
+      sts: "01",
+      msg: "Followers fetched successfully",
+      followers: user.followers,
+    });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No following found" });
+  }
+});
