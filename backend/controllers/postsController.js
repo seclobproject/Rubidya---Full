@@ -3,6 +3,8 @@ import Media from "../models/mediaModel.js";
 
 import User from "../models/userModel.js";
 
+import Comment from "../models/commentModel.js"
+
 export const likeAPost = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { postId } = req.body;
@@ -97,4 +99,22 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
       msg: "No posts found",
     });
   }
+});
+
+//Post a comment
+export const postAComment = asyncHandler(async (req, res) => {
+
+  //Create a record in comment table
+  const createComment = await Comment.create({
+    userId: req.user._id,
+    comment: req.body.comment
+  });
+
+  if (createComment) {
+    res.status(200).json({ sts: "01", msg: "Comment Posted successfully",comment: createComment });
+  } else {
+    res.status(400);
+    throw new Error("Error in saving comment");
+  }
+
 });

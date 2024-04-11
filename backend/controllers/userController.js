@@ -871,17 +871,31 @@ export const addPayId = asyncHandler(async (req, res) => {
 export const getDirectReferredUsers = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+
+
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+
+
+
   const user = await User.findById(userId).populate({
     path: "referrals",
     select:
       "firstName lastName email phone isVerified isAccountVerified transactions",
-  });
+  })
 
   if (user) {
     const referrals = user.referrals;
 
+    // Paginate the referrals 
+    const paginatedReferrals = referrals.slice(skip, skip + limit);
+
     if (referrals) {
-      res.status(200).json({ sts: "01", msg: "Success", referrals });
+      res.status(200).json({ sts: "01", msg: "Success", referrals: paginatedReferrals });
     } else {
       res.status(404).json({ sts: "00", msg: "No referrals found" });
     }
@@ -1422,8 +1436,11 @@ export const getStory = asyncHandler(async (req, res) => {
     }
   }
   if (media) {
-    res.status(200).json({ sts: "01", msg: "Success", media:mediaData });
+    res.status(200).json({ sts: "01", msg: "Success", media: mediaData });
   } else {
     res.status(404).json({ sts: "00", msg: "No media found" });
   }
+
+
+
 });
