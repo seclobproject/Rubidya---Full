@@ -85,11 +85,30 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .limit(10);
 
+  // Send username along with each post
+  let results = [];
+
+  if (posts) {
+    for (let i = 0; i < posts.length; i++) {
+      const user = await User.findById(posts[i].userId);
+      posts[i].username = user.firstName + " " + user.lastName;
+
+      // Check if the user is already liked the post
+      if (posts[i].likedBy.includes(userId)) {
+        posts[i].isLiked = true;
+      } else {
+        posts[i].isLiked = false;
+      }
+
+      results.push({ ...posts[i]._doc, username: posts[i].username, isLiked: posts[i].isLiked });
+    }
+  }
+
   if (posts) {
     res.status(200).json({
       status: "01",
       msg: "Success",
-      posts,
+      posts: results,
     });
   } else {
     res.status(404).json({

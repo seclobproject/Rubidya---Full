@@ -6,7 +6,6 @@ import ShowEditModal from '../components/ShowEditModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const AllMembersList = () => {
-
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const userId = searchParams.get('userId');
@@ -37,7 +36,7 @@ const AllMembersList = () => {
         setLoader(true);
 
         let response;
-        
+
         if (userId) {
             response = await apiCall('/api/admin/get-level-tree', 'get', '', { userId, page: currentPage, limit: limitPerPage });
         } else {
@@ -133,7 +132,10 @@ const AllMembersList = () => {
 
     // Show wallet amount
     const fetchWalletAmount = async (body: { payId: string; uniqueId: string; currency: string }) => {
+        
         try {
+            console.log(body.payId, body.uniqueId);
+
             setshowWalletLoader(true);
             const response = await fetch('https://pwyfklahtrh.rubideum.net/basic/getBalance', {
                 method: 'POST',

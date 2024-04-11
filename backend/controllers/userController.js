@@ -684,6 +684,13 @@ export const verifyUser = asyncHandler(async (req, res) => {
                   sponsor.walletAmount += commission;
                 }
 
+                // Update user's referral amount
+                if (!sponsor.totalReferralAmount) {
+                  sponsor.totalReferralAmount = commission;
+                } else {
+                  sponsor.totalReferralAmount += commission;
+                }
+
                 // Push the credit transaction to each user
                 sponsor.transactions.push({
                   amount: commission,
@@ -1018,47 +1025,6 @@ export const getStats = asyncHandler(async (req, res) => {
   }
 });
 
-// export const getStats = asyncHandler(async (req, res) => {
-//   // Get the member profit and users' count of each plan from package
-//   const memberProfits = await Package.aggregate([
-//     {
-//       $project: {
-//         memberProfit: "$memberProfit",
-//         packageSlug: "$packageSlug",
-//         packageName: "$packageName",
-//         amount: "$amount",
-//         usersCount: { $size: "$users" },
-//       },
-//     },
-//     {
-//       $match: {
-//         memberProfit: { $gt: 0 },
-//       },
-//     },
-//   ]).sort({ amount: 1 });
-
-//   // Get the monthly revenue from the revenue collection
-//   const revenue = await Revenue.findOne({});
-//   const monthlyRevenue = revenue.monthlyRevenue;
-
-//   if (memberProfits) {
-//     memberProfits.forEach((profit) => {
-//       profit.splitAmount = (
-//         monthlyRevenue *
-//         (profit.memberProfit / 100)
-//       ).toFixed(2);
-//     });
-
-//     res.status(200).json({
-//       sts: "01",
-//       msg: "Stats fetched successfully",
-//       memberProfits,
-//     });
-//   } else {
-//     res.status(404).json({ sts: "00", msg: "No stats found" });
-//   }
-// });
-
 // Convert INR to rubidya
 export const convertINR = asyncHandler(async (req, res) => {
   const { amount } = req.body;
@@ -1306,14 +1272,28 @@ export const getFollowers = asyncHandler(async (req, res) => {
     .select("followers")
     .populate({
       path: "followers",
-      select: "firstName lastName profilePic",
+      select: "firstName lastName profilePic following",
       populate: { path: "profilePic", select: "filePath" },
     });
   if (user) {
+    const result = [];
+    user.followers.forEach((eachUser) => {
+      // Check if user is already following
+      if (eachUser.following.includes(userId)) {
+        eachUser.isFollowing = true;
+      } else {
+        eachUser.isFollowing = false;
+      }
+      result.push({
+        ...eachUser._doc,
+        isFollowing: eachUser.isFollowing,
+      });
+    });
+
     res.status(200).json({
       sts: "01",
       msg: "Followers fetched successfully",
-      followers: user.followers,
+      followers: result,
     });
   } else {
     res.status(400).json({ sts: "00", msg: "No following found" });

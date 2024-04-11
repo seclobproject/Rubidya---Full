@@ -6,7 +6,6 @@ import ShowEditModal from '../components/ShowEditModal';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 const PackageMembers = () => {
-
     const { packageId } = useParams();
 
     // const location = useLocation();
@@ -23,7 +22,8 @@ const PackageMembers = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [limitPerPage, setLimitPerPage] = useState(10);
     const [modal21, setModal21] = useState(false);
-    const [activeHandler, setActiveHandler] = useState(0);
+
+    const [viewPackages, setViewPackages] = useState<{ [key: string]: boolean }>({});
 
     const [selectedUser, setSelectedUser] = useState({
         id: '',
@@ -38,11 +38,14 @@ const PackageMembers = () => {
     const fetchUsers = async () => {
         setLoader(true);
 
-        const response = await apiCall('/api/admin/get-users-by-package', 'post', { packageId });
+        console.log(`page: ${currentPage}, limit: ${limitPerPage}`);
+
+        const response = await apiCall('/api/admin/get-users-by-package', 'get', '', { packageId, page: currentPage, limit: limitPerPage });
+
+        console.log(response);
 
         if (response?.status === 200) {
-            console.log(response.data.users);
-            setTableData(response?.data.users);
+            setTableData(response?.data.users.users);
             setLoader(false);
         } else {
             if (currentPage > 1) {
@@ -58,7 +61,7 @@ const PackageMembers = () => {
 
     useEffect(() => {
         fetchUsers();
-    }, [currentPage, modal21, activeHandler, packageId]);
+    }, [currentPage, modal21, packageId]);
 
     // Function to handle change in search input
     const handleSearch = async () => {
@@ -83,19 +86,6 @@ const PackageMembers = () => {
                 padding: '2em',
                 customClass: 'sweet-alerts',
             });
-        }
-    };
-
-    const handleActivation = async (data: any) => {
-        setLoader(true);
-        const response = await apiCall(`/api/admin/activation-handle`, 'post', data);
-
-        if (response?.status === 201) {
-            setLoader(false);
-            setActiveHandler(activeHandler + 1);
-            showAlert(1);
-        } else {
-            setLoader(false);
         }
     };
 
@@ -128,6 +118,8 @@ const PackageMembers = () => {
     // Show wallet amount
     const fetchWalletAmount = async (body: { payId: string; uniqueId: string; currency: string }) => {
         try {
+            console.log(body);
+
             setshowWalletLoader(true);
             const response = await fetch('https://pwyfklahtrh.rubideum.net/basic/getBalance', {
                 method: 'POST',
@@ -171,26 +163,11 @@ const PackageMembers = () => {
         }
     };
 
-    const showEditModalHandler = (user: any) => {
-        setSelectedUser({
-            id: user._id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            countryCode: user.countryCode,
-            phone: user.phone,
-        });
-
-        setModal21(true);
-    };
-
-    const activationHandler = (userId: string, currentStatus: boolean) => {
-        let status = !currentStatus;
-        handleActivation({ userId, status });
-    };
-
-    const fetchTree = (userId: string) => {
-        navigate(`/all-members-list?userId=${userId}`);
+    const toggleViewPackages = (userId: string) => {
+        setViewPackages((prevState) => ({
+            ...prevState,
+            [userId]: !prevState[userId],
+        }));
     };
 
     return (
@@ -228,13 +205,13 @@ const PackageMembers = () => {
                                 <th>Sl. No.</th>
                                 <th>Joining Date</th>
                                 <th>Name</th>
+                                <th>Sponsor Name</th>
                                 <th>Email</th>
                                 <th>Phone</th>
                                 <th>Pay ID</th>
                                 <th>Status</th>
+                                <th>Packages count</th>
                                 <th className="text-center">Wallet Amount</th>
-                                <th className="text-center">Tree</th>
-                                <th className="text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -247,6 +224,9 @@ const PackageMembers = () => {
                                             <td>
                                                 <div className="whitespace-nowrap">{data.firstName + ' ' + data.lastName}</div>
                                             </td>
+                                            <td>
+                                                <div className="whitespace-nowrap">{data.sponsor && data.sponsor.firstName ? data.sponsor.firstName + ' ' + data.sponsor.lastName : ''}</div>
+                                            </td>
                                             <td>{data.email}</td>
                                             <td>{'+' + data.countryCode + ' ' + data.phone}</td>
                                             <td>{data.payId ?? 'No Pay-ID'}</td>
@@ -254,6 +234,29 @@ const PackageMembers = () => {
                                                 <span className={`badge whitespace-nowrap ${data.isAccountVerified === true ? 'bg-success' : data.isAccountVerified === false ? 'bg-danger' : ''}`}>
                                                     {data.isAccountVerified === true ? 'Verified' : 'Not Verified'}
                                                 </span>
+                                            </td>
+                                            <td className="whitespace-nowrap">
+                                                <div className="flex gap-2 items-center">
+                                                    {data.packageName.length ?? ''}{' '}
+                                                    <button onClick={() => toggleViewPackages(data._id)} className="badge whitespace-nowrap badge-outline-info p-1 rounded-lg">
+                                                        View
+                                                    </button>
+                                                </div>
+                                                <div>
+                                                    {viewPackages[data._id] && (
+                                                        <div>
+                                                            {data.packageName.length > 0 &&
+                                                                data.packageName.map((name: string, idx: string) => (
+                                                                    <div key={idx}>
+                                                                        {name
+                                                                            .split('-')
+                                                                            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                                                                            .join(' ')}
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td>
                                                 {showWalletloader ? (
@@ -268,39 +271,6 @@ const PackageMembers = () => {
                                                         Show Wallet
                                                     </button>
                                                 )}
-                                            </td>
-                                            <td>
-                                                <button onClick={() => fetchTree(data._id)} className="badge whitespace-nowrap badge-outline-info p-2 rounded-lg">
-                                                    Show Tree
-                                                </button>
-                                            </td>
-                                            <td className="text-center">
-                                                <div className="dropdown">
-                                                    <Dropdown
-                                                        offset={[0, 5]}
-                                                        placement={'bottom-end'}
-                                                        button={
-                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-70 m-auto">
-                                                                <circle cx="5" cy="12" r="2" stroke="currentColor" strokeWidth="1.5"></circle>
-                                                                <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.5"></circle>
-                                                                <circle cx="19" cy="12" r="2" stroke="currentColor" strokeWidth="1.5"></circle>
-                                                            </svg>
-                                                        }
-                                                    >
-                                                        <ul>
-                                                            <li>
-                                                                <button type="button" onClick={() => showEditModalHandler(data)}>
-                                                                    Edit
-                                                                </button>
-                                                            </li>
-                                                            <li>
-                                                                <button onClick={() => activationHandler(data._id, data.acStatus)} type="button">
-                                                                    {data.acStatus ? 'De-activate' : 'Activate'}
-                                                                </button>
-                                                            </li>
-                                                        </ul>
-                                                    </Dropdown>
-                                                </div>
                                             </td>
                                         </tr>
                                     );

@@ -152,7 +152,17 @@ export const selectPackage = asyncHandler(async (req, res) => {
 
 // Get users based on packages
 export const getUsersByPackage = asyncHandler(async (req, res) => {
-  const { packageId } = req.body;
+
+  const { packageId } = req.query;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+
+  const selectUsers = await Package.findById(packageId).select("users");
+
+  const userCount = selectUsers.users.length;
 
   if (!packageId) {
     res.status(400).json({
@@ -160,17 +170,42 @@ export const getUsersByPackage = asyncHandler(async (req, res) => {
       msg: "Please select a package",
     });
   } else {
+
     const users = await Package.findById(packageId)
-      .populate(
-        "users",
-        "createdAt firstName lastName email phone payId isAccountVerified"
-      )
+      .populate({
+        path: "users",
+        select:
+          "createdAt firstName lastName email phone payId isAccountVerified countryCode sponsor packageName",
+        populate: { path: "sponsor", select: "firstName lastName" },
+        options: { skip: startIndex, limit: limit },
+      })
       .select("users");
 
-    if (users) {
-      res.status(200).json({ sts: "01", msg: "Success", users: users.users });
+    if (users.users.length > 0) {
+      let pagination = {};
+
+      if (endIndex < userCount) {
+        pagination.next = {
+          page: page + 1,
+          limit: limit,
+        };
+      }
+
+      if (startIndex > 0) {
+        pagination.prev = {
+          page: page - 1,
+          limit: limit,
+        };
+      }
+
+      res
+        .status(200)
+        .json({ users, pagination, sts: "01", msg: "Fetched successfully" });
+
     } else {
-      res.status(404).json({ sts: "00", msg: "No package found" });
+
+      res.status(404).json({ msg: "No users found" });
+
     }
   }
 });

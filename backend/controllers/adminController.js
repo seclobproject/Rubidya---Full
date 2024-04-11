@@ -72,6 +72,7 @@ export const getAllusers = asyncHandler(async (req, res) => {
     .limit(limit);
 
   if (users.length > 0) {
+
     const pagination = {};
 
     if (endIndex < userCount) {
@@ -92,12 +93,13 @@ export const getAllusers = asyncHandler(async (req, res) => {
       .status(200)
       .json({ users, pagination, sts: "01", msg: "Fetched successfully" });
   } else {
-    res.status(404).json({ message: "No users found" });
+    res.status(404).json({ msg: "No users found" });
   }
 });
 
 // Add 10 level percentages
 export const addLevelPercentages = asyncHandler(async (req, res) => {
+  
   const { levelPercentages } = req.body;
 
   let level = await Level.findOne();
