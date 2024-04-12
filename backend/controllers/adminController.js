@@ -422,13 +422,12 @@ export const getLevelTree = asyncHandler(async (req, res) => {
 
 // Get the verifications history
 export const getVerificationsHistory = asyncHandler(async (req, res) => {
+
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
 
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
-
-  const dataCount = await Income.countDocuments({});
 
   // Get the verifications history from income
   const datas = await Income.find({})

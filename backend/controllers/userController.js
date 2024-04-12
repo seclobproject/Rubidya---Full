@@ -749,9 +749,11 @@ export const verifyUser = asyncHandler(async (req, res) => {
                   const newIncome = await Income.create({
                     userId: userId,
                     packageSelected: packageId,
-                    levelIncome: totalCommission,
-                    monthlyDivident: totalMonthlyDivident,
-                    adminProfit: remainingAmount,
+                    levelIncome: parseFloat(totalCommission.toFixed(3)),
+                    monthlyDivident: parseFloat(
+                      totalMonthlyDivident.toFixed(3)
+                    ),
+                    adminProfit: parseFloat(remainingAmount.toFixed(3)),
                   });
 
                   if (newIncome) {
@@ -1241,17 +1243,36 @@ export const unfollow = asyncHandler(async (req, res) => {
 // Get user suggestions
 export const getSuggestions = asyncHandler(async (req, res) => {
   const userId = req.user._id;
+
   // Get the following
   const user = await User.findById(userId).select("following");
 
   const following = user.following;
 
-  // Get users in the order of new joining upto 20 results
-  const users = await User.find({})
-    .populate({ path: "profilePic", select: "filePath" })
-    .sort({ createdAt: -1 })
-    .limit(20)
+  // Get users in the order to get 20 results
+
+  // Define a function to shuffle array
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  // Fetch all users
+  const allUsers = await User.find({})
+    .populate({
+      path: "profilePic",
+      select: "filePath",
+    })
     .select("firstName lastName isAccountVerified profilePic");
+
+  // Shuffle the users array
+  const shuffledUsers = shuffleArray(allUsers);
+
+  // Limit the result to 20 users
+  const users = shuffledUsers.slice(0, 20);
 
   if (users) {
     const result = [];
@@ -1264,10 +1285,13 @@ export const getSuggestions = asyncHandler(async (req, res) => {
       }
       result.push({ ...user._doc, isFollowing: user.isFollowing });
     });
-
-    res
-      .status(200)
-      .json({ sts: "01", msg: "Suggestions fetched successfully", result });
+    if (result) {
+      res
+        .status(200)
+        .json({ sts: "01", msg: "Suggestions fetched successfully", result });
+    } else {
+      res.status(400).json({ sts: "00", msg: "No suggestions found" });
+    }
   } else {
     res.status(400).json({ sts: "00", msg: "No suggestions found" });
   }
@@ -1328,5 +1352,35 @@ export const getFollowers = asyncHandler(async (req, res) => {
     });
   } else {
     res.status(400).json({ sts: "00", msg: "No following found" });
+  }
+});
+
+// Search in all users
+export const findAllUser = asyncHandler(async (req, res) => {
+  //Fetching userId
+  const userId = req.user._id;
+
+  //Fetching data of all user
+  const users = await User.find()
+    .select("firstName lastName profilePic followers")
+    .populate({ path: "profilePic", select: "filePath" });
+
+  if (users) {
+    const result = [];
+    users.forEach((user) => {
+      // Check if user is already following
+      if (user.followers.includes(userId)) {
+        user.isFollowing = true;
+      } else {
+        user.isFollowing = false;
+      }
+      result.push({ ...user._doc, isFollowing: user.isFollowing });
+    });
+
+    res
+      .status(200)
+      .json({ sts: "01", msg: "Users data fetched successfully", result });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No User found" });
   }
 });

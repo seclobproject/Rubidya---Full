@@ -8,11 +8,11 @@ import {
   convertINR,
   deductRubideum,
   editUserProfile,
+  findAllUser,
   follow,
   getDirectReferredUsers,
   getFollowers,
   getFollowing,
-  
   getMedia,
   getProfilePicture,
   getStats,
@@ -140,6 +140,9 @@ router.route("/get-following").get(protect, getFollowing);
 
 // Get followers
 router.route("/get-followers").get(protect, getFollowers);
+
+//Get Search in all users
+router.route("/all-users").get(protect, findAllUser);
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);
