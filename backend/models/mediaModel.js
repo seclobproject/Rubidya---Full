@@ -23,9 +23,13 @@ const mediaSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Media",
     },
-    commentId: {
+    commentId: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "Comment",
+    }],
+    commentCount:{
+      type:Number,
+      default:0,
     },
     likedBy: [
       {

@@ -1443,4 +1443,36 @@ export const getStory = asyncHandler(async (req, res) => {
 
 
 
+
+});
+
+//Find all users
+export const findAllUser = asyncHandler(async (req, res) => {
+
+  //Fetching userId
+  const userId = req.user._id;
+
+  //Fetching data of all user
+  const users = await User.find().select("firstName lastName  profilePic following")
+    .populate({ path: "profilePic", select: "filePath" })
+
+  if (users) {
+    const result = [];
+    users.forEach((user) => {
+
+      // Check if user is already following
+      if (user.following.includes(userId)) {
+        user.isFollowing = true;
+      } else {
+        user.isFollowing = false;
+      }
+      result.push({ ...user._doc, isFollowing: user.isFollowing });
+    });
+
+    res
+      .status(200)
+      .json({ sts: "01", msg: "Users data fetched successfully", result });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No User found" });
+  }
 });

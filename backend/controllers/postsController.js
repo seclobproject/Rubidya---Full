@@ -104,17 +104,123 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
 //Post a comment
 export const postAComment = asyncHandler(async (req, res) => {
 
-  //Create a record in comment table
-  const createComment = await Comment.create({
-    userId: req.user._id,
-    comment: req.body.comment
-  });
+  //Fetching datas of post
+  const post = await Media.findById(req.body.mediaId);
 
-  if (createComment) {
-    res.status(200).json({ sts: "01", msg: "Comment Posted successfully",comment: createComment });
+  if (post) {
+
+    //Create a record in comment table
+    const createComment = await Comment.create({
+      userId: req.user._id,
+      comment: req.body.comment,
+      mediaId: req.body.mediaId
+    });
+
+    if (createComment) {
+
+      //Fetching commentId
+      let commentId = createComment._id
+
+
+      //Updating post record by adding the commentId and by incrementing comment count
+      const updatePost = await Media.findByIdAndUpdate(
+        req.body.mediaId, {
+        $push: { commentId: commentId },
+        $inc: { commentCount: 1 },
+      },
+        { new: true }
+
+      )
+
+      res.status(200).json({ sts: "01", msg: "Comment Posted successfully", comment: createComment });
+    }
+    else {
+      res.status(400).json({
+        status: "00",
+        msg: "Cannot post comment",
+      });
+    }
   } else {
-    res.status(400);
-    throw new Error("Error in saving comment");
+    res.status(400).json({
+      status: "00",
+      msg: "Cannot find the post",
+    });
   }
 
+});
+
+//Delete a comment posted by user
+export const deleteAComment = asyncHandler(async (req, res) => {
+
+  const commentId = req.params.id;
+
+  //Fetching datas of comment
+  const comment = await Comment.findById(commentId);
+
+  if (comment) {
+
+    //Fetching data of media 
+    const media = await Media.findById(comment.mediaId);
+
+    //Checking if commentId of media includes commentId provided
+    if (media.commentId.includes(commentId)) {
+
+      //Updating record of media by removing commentId and decrementing commentcount
+      const updateMedia = await Media.findByIdAndUpdate(
+        comment.mediaId,
+        {
+          $pull: { commentId: commentId },
+          $inc: { commentCount: -1 },
+        },
+        { new: true }
+      );
+      //Deleting comment record
+      const deletedMedia = await Comment.findByIdAndDelete(commentId)
+
+      res.status(200).json({ message: 'Comment deleted successfully' });
+    } else {
+      return res.status(404).json({ error: 'No such comment found for the post ' });
+    }
+  } else {
+    return res.status(404).json({ error: 'No comment found' });
+  }
+});
+
+//User deletes a comment posted by other user to their post
+export const deleteACommentToMyPost = asyncHandler(async (req, res) => {
+
+  //Fetching commentId and mediaId
+  const commentId = req.body.commentId;
+  const mediaId = req.body.mediaId;
+
+  //Fetching datas of comment
+  const comment = await Comment.findById(commentId);
+
+  if (comment) {
+
+    //Fetching datas of media 
+    const media = await Media.findById(mediaId);
+
+    //Checking if commentId of media includes commentId provided  
+    if (media.commentId.includes(commentId)) {
+
+      //Updating record of media by removing commentId and decrementing commentcount
+      const updateMedia = await Media.findByIdAndUpdate(
+        comment.mediaId,
+        {
+          $pull: { commentId: commentId },
+          $inc: { commentCount: -1 },
+        },
+        { new: true }
+      );
+      //Deleting comment record
+      const deletedMedia = await Comment.findByIdAndDelete(commentId)
+
+      res.status(200).json({ message: 'Comment deleted successfully' });
+    } else {
+      return res.status(404).json({ error: 'No such comment found for the post ' });
+    }
+  } else {
+    return res.status(404).json({ error: 'No comment found' });
+  }
 });
