@@ -5,6 +5,7 @@ import Register from '../pages/Authentication/Register';
 import ManagePackages from '../pages/ManagePackages';
 import AllMembersList from '../pages/AllMembersList';
 import PackageMembers from '../pages/PackageMembers';
+import VerificationHistory from '../pages/VerificationHistory';
 const IndexSales = lazy(() => import('../pages/Indexsales'));
 const Index = lazy(() => import('../pages/Index'));
 const Analytics = lazy(() => import('../pages/Analytics'));
@@ -142,6 +143,10 @@ const routes = [
     {
         path: '/manage-packages',
         element: <ManagePackages />,
+    },
+    {
+        path: '/verification-history',
+        element: <VerificationHistory />,
     },
     // analytics page
     {
@@ -464,7 +469,7 @@ const routes = [
         layout: 'blank',
     },
     //Authentication
-    
+
     {
         path: '/auth/boxed-signup',
         element: <RegisterBoxed />,

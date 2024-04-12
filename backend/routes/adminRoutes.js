@@ -8,8 +8,10 @@ import {
   getLevelTree,
   getRevenueToAdmin,
   getUsersCount,
+  getVerificationsHistory,
   handleActivation,
   searchAllusers,
+  searchInVerifications,
   // shareSplitting,
   splitProfit,
 } from "../controllers/adminController.js";
@@ -58,6 +60,12 @@ router.route("/get-level-tree").get(protect, getLevelTree);
 
 // Get users based on packages
 router.route("/get-users-by-package").get(protect, getUsersByPackage);
+
+// Get verification history
+router.route("/get-verifications-history").get(protect, getVerificationsHistory);
+
+// Search in verification history
+router.route("/search-in-verifications").get(protect, searchInVerifications);
 
 // Share splitting
 // router.route("/share-splitting").get(protect, shareSplitting);

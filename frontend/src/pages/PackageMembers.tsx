@@ -211,7 +211,6 @@ const PackageMembers = () => {
                                 <th>Pay ID</th>
                                 <th>Status</th>
                                 <th>Packages count</th>
-                                <th className="text-center">Wallet Amount</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -257,20 +256,6 @@ const PackageMembers = () => {
                                                         </div>
                                                     )}
                                                 </div>
-                                            </td>
-                                            <td>
-                                                {showWalletloader ? (
-                                                    <div className="flex justify-center">
-                                                        <span className="animate-spin border-[3px] border-transparent border-l-primary rounded-full w-6 h-6 inline-block align-middle m-auto mb-10"></span>
-                                                    </div>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => fetchWalletAmount({ payId: data.payId, uniqueId: data.uniqueId, currency: 'RBD' })}
-                                                        className="badge whitespace-nowrap badge-outline-info p-2 rounded-lg"
-                                                    >
-                                                        Show Wallet
-                                                    </button>
-                                                )}
                                             </td>
                                         </tr>
                                     );

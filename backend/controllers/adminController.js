@@ -1,4 +1,5 @@
 import asyncHandler from "../middleware/asyncHandler.js";
+import Income from "../models/incomeModel.js";
 import Level from "../models/levelModel.js";
 import Package from "../models/packageModel.js";
 import Revenue from "../models/revenueModel.js";
@@ -71,10 +72,8 @@ export const getAllusers = asyncHandler(async (req, res) => {
     .skip(startIndex)
     .limit(limit);
 
+  let pagination = {};
   if (users.length > 0) {
-
-    const pagination = {};
-
     if (endIndex < userCount) {
       pagination.next = {
         page: page + 1,
@@ -99,7 +98,6 @@ export const getAllusers = asyncHandler(async (req, res) => {
 
 // Add 10 level percentages
 export const addLevelPercentages = asyncHandler(async (req, res) => {
-  
   const { levelPercentages } = req.body;
 
   let level = await Level.findOne();
@@ -404,7 +402,7 @@ export const getLevelTree = asyncHandler(async (req, res) => {
   const users = await User.findById(userId)
     .populate(
       "referrals",
-      "createdAt firstName lastName email phone isAccountVerified payId countryCode acStatus"
+      "createdAt firstName lastName email phone isAccountVerified payId countryCode acStatus uniqueId"
     )
     .select("referrals")
     .skip(startIndex)
@@ -419,5 +417,86 @@ export const getLevelTree = asyncHandler(async (req, res) => {
     res.status(400).json({
       msg: "Error fetching level tree",
     });
+  }
+});
+
+// Get the verifications history
+export const getVerificationsHistory = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+
+  const dataCount = await Income.countDocuments({});
+
+  // Get the verifications history from income
+  const datas = await Income.find({})
+    .populate({
+      path: "userId",
+      select:
+        "firstName lastName email phone payId countryCode sponsor createdAt",
+      populate: { path: "sponsor", select: "firstName lastName" },
+    })
+    .select("userId createdAt adminProfit monthlyDivident levelIncome")
+    .populate({ path: "packageSelected", select: "packageName" })
+    .skip(startIndex)
+    .limit(limit);
+
+  if (datas.length > 0) {
+    res.status(200).json({
+      msg: "Verifications history fetched successfully",
+      datas,
+    });
+  } else {
+    res.status(400).json({
+      msg: "Error fetching verifications history",
+    });
+  }
+});
+
+// Search in verifications history
+export const searchInVerifications = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+  let query = {
+    $or: [
+      { firstName: { $regex: search, $options: "i" } },
+      { lastName: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+      { payId: { $regex: search, $options: "i" } },
+    ],
+  };
+
+  // Handle phone number search separately if it's provided and valid
+  if (!isNaN(search)) {
+    query.$or.push({ phone: search });
+  }
+
+  // Define the query for the Income collection
+  const incomeQuery = { $or: [{ userId: { $in: [] } }] }; // Define the query object for Income collection, empty $in array will be populated later
+
+  // Find users matching the search criteria
+  const users = await User.find(query);
+
+  // Extract userIds from found users
+  const userIds = users.map((user) => user._id);
+
+  // Populate incomeQuery with userIds
+  incomeQuery.$or[0].userId.$in = userIds;
+
+  // Find income data based on the populated userIds
+  const datas = await Income.find(incomeQuery)
+    .populate({
+      path: "userId",
+      select:
+        "firstName lastName email phone payId countryCode sponsor createdAt",
+      populate: { path: "sponsor", select: "firstName lastName" },
+    })
+    .populate({ path: "packageSelected", select: "packageName" });
+
+  if (datas) {
+    res.status(200).json({ sts: "01", msg: "Fetched successfully", datas });
+  } else {
+    res.status(404).json({ message: "No users found" });
   }
 });

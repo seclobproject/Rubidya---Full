@@ -14,6 +14,7 @@ import Package from "../models/packageModel.js";
 import Revenue from "../models/revenueModel.js";
 import ProfilePic from "../models/profilePicModel.js";
 import mongoose from "mongoose";
+import Income from "../models/incomeModel.js";
 
 const generateRandomString = () => {
   const baseString = "RBD";
@@ -566,6 +567,9 @@ export const verifyUser = asyncHandler(async (req, res) => {
             // Add the user to selected package
             selectedPackage.users.push(userId);
 
+            // Total monthly divident distributed
+            let totalMonthlyDivident = 0;
+
             // Push the packageSlug into the array
             user.packageName.push(selectedPackage.packageSlug);
 
@@ -618,9 +622,12 @@ export const verifyUser = asyncHandler(async (req, res) => {
                     eachPackage.monthlyDivident + memberProfit
                   ).toFixed(4);
 
+                  totalMonthlyDivident += memberProfit;
+
                   eachPackage.usersCount = eachPackage.users.length;
 
                   const updatePackage = await eachPackage.save();
+
                   if (updatePackage) {
                     console.log("updatePackage", updatePackage.packageName);
                   }
@@ -672,7 +679,7 @@ export const verifyUser = asyncHandler(async (req, res) => {
                 }
 
                 // Get the first of the percentages
-                const commission = (percentages[0] / 100) * amount;
+                const commission = amount * (percentages[0] / 100);
 
                 // Get the total commission inorder to move the balance to admin's payId
                 totalCommission += commission;
@@ -722,7 +729,8 @@ export const verifyUser = asyncHandler(async (req, res) => {
               }
 
               // Update the remaining amount to the payId: RBD004779237
-              const remainingAmount = amount - totalCommission;
+              const remainingAmount =
+                newAmount - (totalCommission + totalMonthlyDivident);
 
               const payId = "RBD004779237";
               const uniqueId = "66000acbcfaa5d4ccb97b313";
@@ -737,9 +745,20 @@ export const verifyUser = asyncHandler(async (req, res) => {
                 const updatedUser = await user.save();
 
                 if (updatedUser) {
-                  res
-                    .status(200)
-                    .json({ sts: "01", msg: "User verified successfully" });
+                  // New income document
+                  const newIncome = await Income.create({
+                    userId: userId,
+                    packageSelected: packageId,
+                    levelIncome: totalCommission,
+                    monthlyDivident: totalMonthlyDivident,
+                    adminProfit: remainingAmount,
+                  });
+
+                  if (newIncome) {
+                    res
+                      .status(200)
+                      .json({ sts: "01", msg: "User verified successfully" });
+                  }
                 } else {
                   res.status(400).json({ sts: "00", msg: "User not verified" });
                 }
