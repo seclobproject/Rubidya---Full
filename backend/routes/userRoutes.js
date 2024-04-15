@@ -36,6 +36,8 @@ import {
   verifyOTPForForget,
   verifyUser,
   findAllUser,
+  blockAUser,
+  reportAccount,
 } from "../controllers/userController.js";
 
 import {
@@ -155,6 +157,12 @@ router.route("/upload-videos").post(protect,videoUpload)
 
 //Get alist of all users
 router.route("/all-users").get(protect,findAllUser)
+
+//Block a user
+router.route("/block-user").put(protect,blockAUser)
+
+//Report a user
+router.route("/report-user").post(protect,reportAccount)
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);

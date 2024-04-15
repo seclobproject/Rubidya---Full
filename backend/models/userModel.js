@@ -78,6 +78,16 @@ const userSchema = new mongoose.Schema(
       double: true,
       default: 0,
     },
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    blockedCount: {
+      type: Number,
+      default: 0,
+    },
     transactions: [
       {
         amount: Number,

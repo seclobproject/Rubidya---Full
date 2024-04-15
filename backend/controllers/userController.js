@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 
 import Level from "../models/levelModel.js";
 import Media from "../models/mediaModel.js";
+import Report from "../models/reportModel.js"
 
 import { transporter } from "../config/nodeMailer.js";
 import UserOTPVerification from "../models/otpModel.js";
@@ -1475,4 +1476,93 @@ export const findAllUser = asyncHandler(async (req, res) => {
   } else {
     res.status(400).json({ sts: "00", msg: "No User found" });
   }
+});
+
+// Block a user
+export const blockAUser = asyncHandler(async (req, res) => {
+
+  const userId = req.user._id;
+
+  // Get the user details
+  const user = await User.findById(userId);
+
+  if (user) {
+
+    // Update the user with the blocked user
+    let updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $push: { blockedUsers: req.body.user },
+        $inc: { blockedCount: 1 },
+      },
+      { new: true }
+    );
+    if (updatedUser) {
+
+      //Removing blocked users id from followers list ,if user is followed by the blocked user
+      if (updatedUser.followers.includes(req.body.user)) {
+
+        updatedUser = await User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { followers: req.body.user },
+
+          },
+          { new: true }
+        );
+      }
+
+      //Removing blocked users id from following list ,if user is following  blocked user
+      if (updatedUser.following.includes(req.body.user)) {
+
+        updatedUser = await User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { following: req.body.user },
+
+          },
+          { new: true }
+        );
+      }
+      res.status(201).json({
+        sts: "01",
+        msg: "User updated successfully",
+        user: updatedUser
+      });
+    } else {
+      res.status(400).json({
+        sts: "00",
+        msg: "User not updated",
+      });
+    }
+  }
+  else {
+    res.status(400).json({
+      sts: "00",
+      msg: "User not found",
+    });
+  }
+});
+
+//Report account
+export const reportAccount = asyncHandler(async (req, res) => {
+  //Create a record in report table
+  const report = await Report.create({
+    reportType: req.body.type,
+    decription: req.body.decription,
+    blockedBy: req.user._id,
+    blockedUser: req.body.user
+  });
+
+  if (report) {
+    res.status(200).json({ sts: "01", msg: "Account reported successfully" });
+  }
+  else {
+    res.status(400).json({
+      status: "00",
+      msg: "Cannot report",
+    });
+  }
+
+
 });
