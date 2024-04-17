@@ -76,10 +76,11 @@ export const likeAPost = asyncHandler(async (req, res) => {
 export const getLatestPosts = asyncHandler(async (req, res) => {
   // Fetch the posts posted by following users
   const userId = req.user._id;
-  const following = await User.findById(userId).populate({
+  const following = await User.findById(userId).select("_id profilePic").populate({
     path: "following",
     select: "_id",
-  });
+  }).populate({ path: "profilePic", select: "filePath" })
+
 
   const posts = await Media.find({
     userId: { $in: following.following },
@@ -92,11 +93,13 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
       status: "01",
       msg: "Success",
       posts,
+      user:following
     });
   } else {
     res.status(404).json({
       status: "00",
       msg: "No posts found",
+     
     });
   }
 });
