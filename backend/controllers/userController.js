@@ -1550,7 +1550,7 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
   //Fetching userId
   const userId = req.params.id;
   //Fetching data of a user
-  const users = await User.findById(userId).select("firstName lastName  profilePic followers following ")
+  const users = await User.findById(userId).select("firstName lastName bio  profilePic followers following ")
     .populate({ path: "profilePic", select: "filePath" })
 
   if (users) {
