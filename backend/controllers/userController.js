@@ -1565,9 +1565,9 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
     }
 
     //Fetching media datas of user
-    const media = await Media.find({ userId: userId })
+    const media = await Media.find({ userId: userId }).select("filePath")
 
-    result.push({ ...users._doc, isFollowing: users.isFollowing, followers: users.followers.length, following: users.following.length, post: media.length });
+    result.push({ ...users._doc, isFollowing: users.isFollowing, followers: users.followers.length, following: users.following.length, post: media.length,media:media });
 
     res
       .status(200)
