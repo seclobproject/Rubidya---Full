@@ -1549,7 +1549,7 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
 
   //Fetching userId
   const userId = req.params.id;
-  //Fetching data of all user
+  //Fetching data of a user
   const users = await User.findById(userId).select("firstName lastName  profilePic followers following ")
     .populate({ path: "profilePic", select: "filePath" })
 
@@ -1557,18 +1557,19 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
 
     const result = [];
 
-    //   // Check if user is already following
+    // Check if user is already following
     if (users.followers.includes(req.user._id)) {
       users.isFollowing = true;
     } else {
       users.isFollowing = false;
     }
 
+    //Fetching media datas of user
     const media = await Media.find({ userId: userId })
 
     result.push({ ...users._doc, isFollowing: users.isFollowing, followers: users.followers.length, following: users.following.length, post: media.length });
 
-res
+    res
       .status(200)
       .json({ sts: "01", msg: "Users data fetched successfully", result });
   } else {
