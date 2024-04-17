@@ -1544,6 +1544,39 @@ export const blockAUser = asyncHandler(async (req, res) => {
   }
 });
 
+//Get user detail
+export const findOnesDetail = asyncHandler(async (req, res) => {
+
+  //Fetching userId
+  const userId = req.params.id;
+  //Fetching data of all user
+  const users = await User.findById(userId).select("firstName lastName  profilePic followers following ")
+    .populate({ path: "profilePic", select: "filePath" })
+
+  if (users) {
+
+    const result = [];
+
+    //   // Check if user is already following
+    if (users.followers.includes(req.user._id)) {
+      users.isFollowing = true;
+    } else {
+      users.isFollowing = false;
+    }
+
+    const media = await Media.find({ userId: userId })
+
+    result.push({ ...users._doc, isFollowing: users.isFollowing, followers: users.followers.length, following: users.following.length, post: media.length });
+
+res
+      .status(200)
+      .json({ sts: "01", msg: "Users data fetched successfully", result });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No User found" });
+  }
+
+})
+
 //Report account
 export const reportAccount = asyncHandler(async (req, res) => {
   //Create a record in report table
@@ -1566,3 +1599,6 @@ export const reportAccount = asyncHandler(async (req, res) => {
 
 
 });
+
+
+

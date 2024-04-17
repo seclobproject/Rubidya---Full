@@ -38,6 +38,8 @@ import {
   findAllUser,
   blockAUser,
   reportAccount,
+  findOnesDetail,
+
 } from "../controllers/userController.js";
 
 import {
@@ -163,6 +165,9 @@ router.route("/block-user").put(protect,blockAUser)
 
 //Report a user
 router.route("/report-user").post(protect,reportAccount)
+
+//Get details of a user
+router.route("/get-user/:id").get(protect,findOnesDetail)
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);
