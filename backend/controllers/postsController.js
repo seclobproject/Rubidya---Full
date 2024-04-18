@@ -86,7 +86,7 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
     userId: { $in: following.following },
   })
     .sort({ createdAt: -1 })
-    .limit(10);
+    // .limit(10);
 
   if (posts) {
     res.status(200).json({
