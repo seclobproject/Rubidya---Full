@@ -1301,7 +1301,14 @@ export const getSuggestions = asyncHandler(async (req, res) => {
 export const getFollowing = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const user = await User.findById(userId)
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+
+  let user = await User.findById(userId)
     .select("following")
     .populate({
       path: "following",
@@ -1309,11 +1316,15 @@ export const getFollowing = asyncHandler(async (req, res) => {
       populate: { path: "profilePic", select: "filePath" },
     });
 
+  let following = user.following;
+
+  // Paginate the following users
+  following = following.slice(skip, skip + limit);
   if (user) {
     res.status(200).json({
       sts: "01",
       msg: "Following fetched successfully",
-      following: user.following,
+      following: following,
     });
   } else {
     res.status(400).json({ sts: "00", msg: "No following found" });
@@ -1323,18 +1334,31 @@ export const getFollowing = asyncHandler(async (req, res) => {
 // Get the followers
 export const getFollowers = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const user = await User.findById(userId)
+
+  let user = await User.findById(userId)
     .select("followers")
     .populate({
       path: "followers",
-      select: "firstName lastName profilePic following",
+      select: "firstName lastName profilePic followers",
       populate: { path: "profilePic", select: "filePath" },
     });
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+  user = user.followers;
+
+  // Paginate the followed users
+  user = user.slice(skip, skip + limit);
+
+  console.log("USERR", user);
   if (user) {
     const result = [];
-    user.followers.forEach((eachUser) => {
+    user.forEach((eachUser) => {
       // Check if user is already following
-      if (eachUser.following.includes(userId)) {
+      if (eachUser.followers.includes(userId)) {
         eachUser.isFollowing = true;
       } else {
         eachUser.isFollowing = false;
@@ -1382,5 +1406,281 @@ export const findAllUser = asyncHandler(async (req, res) => {
       .json({ sts: "01", msg: "Users data fetched successfully", result });
   } else {
     res.status(400).json({ sts: "00", msg: "No User found" });
+  }
+});
+
+//Get user detail
+export const findOnesDetail = asyncHandler(async (req, res) => {
+  //Fetching userId
+  const userId = req.params.id;
+  //Fetching data of a user
+  const users = await User.findById(userId)
+    .select("firstName lastName bio  profilePic followers following ")
+    .populate({ path: "profilePic", select: "filePath" });
+
+  if (users) {
+    const result = [];
+
+    // Check if user is already following
+    if (users.followers.includes(req.user._id)) {
+      users.isFollowing = true;
+    } else {
+      users.isFollowing = false;
+    }
+
+    //Fetching media datas of user
+    const media = await Media.find({ userId: userId }).select(
+      "filePath likeCount"
+    );
+
+    result.push({
+      ...users._doc,
+      isFollowing: users.isFollowing,
+      followers: users.followers.length,
+      following: users.following.length,
+      post: media.length,
+      media: media,
+    });
+
+    res
+      .status(200)
+      .json({ sts: "01", msg: "Users data fetched successfully", result });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No User found" });
+  }
+});
+
+// Upload video
+// Set storage engine
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/videos/"); // Save uploaded files to the 'uploads/videos' folder
+  },
+  filename: function (req, file, cb) {
+    cb(
+      null,
+      file.fieldname + "-" + Date.now() + path.extname(file.originalname)
+    ); // Add timestamp to the filename to avoid duplicates
+  },
+});
+
+// Initialize upload
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 1000000000000000000000 }, // Set file size limit if needed
+  fileFilter: function (req, file, cb) {
+    checkFileType(file, cb);
+  },
+}).single("video"); // 'video' is the name attribute of the file input field
+
+// Check file type
+function checkFileType(file, cb) {
+  const filetypes = /mp4|avi|mkv|mov|wmv/; // Add more file types if needed
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = filetypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb("Error: Videos only!");
+  }
+}
+
+//Function to handle video upload
+export const videoUpload = asyncHandler(async (req, res) => {
+  upload(req, res, async (err) => {
+    if (err) {
+      console.error(err);
+      res.status(400).send("Error uploading file!");
+    } else {
+      if (req.file == undefined) {
+        res.status(400).send("No file selected!");
+      } else {
+        const createMedia = await Media.create({
+          userId: req.user._id,
+          fileType: req.file.mimetype,
+          fileName: req.file.filename,
+          filePath: req.file.path,
+        });
+
+        res.send("File uploaded successfully!");
+      }
+    }
+  });
+});
+
+//Function to get stories of a user
+export const getStory = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  //Fetching data from media against userId and story:true
+  const media = await Media.find({ userId, story: true });
+
+  //Subtracting 24 hours from current time inorder to get only 24 hours feed of user
+  let subtractedTime = moment().subtract(24, "hours");
+
+  //Formatting the subtracted time
+  let formattedSubtractedTime = subtractedTime.format("YYYY-MM-DD,HH:mm:ss");
+
+  let mediaData = [];
+
+  //Maping through the media data
+  for (const data of media) {
+    //Formatting created time of media
+    let mediaFormattedTime = moment(data.createdAt).format(
+      "YYYY-MM-DD,HH:mm:ss"
+    );
+
+    //Checking the condition
+    if (mediaFormattedTime > formattedSubtractedTime) {
+      mediaData.push(data);
+    }
+  }
+  if (media) {
+    res.status(200).json({ sts: "01", msg: "Success", media: mediaData });
+  } else {
+    res.status(404).json({ sts: "00", msg: "No media found" });
+  }
+});
+
+// Block a user
+export const blockAUser = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  // Get the user details
+  const user = await User.findById(userId);
+
+  if (user) {
+    // Update the user with the blocked user
+    let updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $push: { blockedUsers: req.body.user },
+        $inc: { blockedCount: 1 },
+      },
+      { new: true }
+    );
+    if (updatedUser) {
+      //Removing blocked users id from followers list ,if user is followed by the blocked user
+      if (updatedUser.followers.includes(req.body.user)) {
+        updatedUser = await User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { followers: req.body.user },
+          },
+          { new: true }
+        );
+      }
+
+      //Removing blocked users id from following list ,if user is following  blocked user
+      if (updatedUser.following.includes(req.body.user)) {
+        updatedUser = await User.findByIdAndUpdate(
+          userId,
+          {
+            $pull: { following: req.body.user },
+          },
+          { new: true }
+        );
+      }
+      res.status(201).json({
+        sts: "01",
+        msg: "User updated successfully",
+        user: updatedUser,
+      });
+    } else {
+      res.status(400).json({
+        sts: "00",
+        msg: "User not updated",
+      });
+    }
+  } else {
+    res.status(400).json({
+      sts: "00",
+      msg: "User not found",
+    });
+  }
+});
+
+// Search in all following users
+export const searchAllFollowing = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+
+  let userId = req.user._id;
+
+  //Get users following user details
+  let user = await User.findById(userId)
+    .select("following")
+    .populate({
+      path: "following",
+      select: "firstName lastName profilePic",
+      populate: { path: "profilePic", select: "filePath" },
+    });
+
+  let searchText = req.query.search.toLowerCase();
+  const regex = new RegExp(`^${searchText}`, "i"); // Case-insensitive regex that matches text starting with searchText
+
+  // Search by firstName or lastName
+  user = user.following.filter(
+    (user) =>
+      regex.test(user.firstName.toLowerCase()) ||
+      regex.test(user.lastName.toLowerCase())
+  );
+
+  if (user) {
+    res.status(200).json({ sts: "01", msg: "Fetched successfully", user });
+  } else {
+    res.status(404).json({ message: "No users found" });
+  }
+});
+
+// Search in all followers users
+export const searchAllFollowers = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+
+  let userId = req.user._id;
+
+  //Get users followers user details
+  let user = await User.findById(userId)
+    .select("followers")
+    .populate({
+      path: "followers",
+      select: "firstName lastName profilePic",
+      populate: { path: "profilePic", select: "filePath" },
+    });
+
+  let searchText = req.query.search.toLowerCase();
+  const regex = new RegExp(`^${searchText}`, "i"); // Case-insensitive regex that matches text starting with searchText
+
+  // Search by firstName or lastName
+  user = user.followers.filter(
+    (user) =>
+      regex.test(user.firstName.toLowerCase()) ||
+      regex.test(user.lastName.toLowerCase())
+  );
+
+  if (user) {
+    res.status(200).json({ sts: "01", msg: "Fetched successfully", user });
+  } else {
+    res.status(404).json({ message: "No users found" });
+  }
+});
+
+//Report account
+export const reportAccount = asyncHandler(async (req, res) => {
+  //Create a record in report table
+  const report = await Report.create({
+    reportType: req.body.type,
+    decription: req.body.decription,
+    blockedBy: req.user._id,
+    blockedUser: req.body.user,
+  });
+
+  if (report) {
+    res.status(200).json({ sts: "01", msg: "Account reported successfully" });
+  } else {
+    res.status(400).json({
+      status: "00",
+      msg: "Cannot report",
+    });
   }
 });

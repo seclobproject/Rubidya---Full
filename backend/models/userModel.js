@@ -159,6 +159,16 @@ const userSchema = new mongoose.Schema(
     district: {
       type: String,
     },
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    blockedCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

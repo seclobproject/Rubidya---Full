@@ -33,6 +33,20 @@ const mediaSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    commentId: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment",
+      },
+    ],
+    commentCount: {
+      type: Number,
+      default: 0,
+    },
+    story: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

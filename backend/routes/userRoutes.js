@@ -4,11 +4,13 @@ const router = express.Router();
 import { protect } from "../middleware/authMiddleware.js";
 import {
   addPayId,
+  blockAUser,
   changePassword,
   convertINR,
   deductRubideum,
   editUserProfile,
   findAllUser,
+  findOnesDetail,
   follow,
   getDirectReferredUsers,
   getFollowers,
@@ -22,7 +24,10 @@ import {
   refferalTreeCount,
   registerUser,
   registerUserByReferral,
+  reportAccount,
   resendOTP,
+  searchAllFollowers,
+  searchAllFollowing,
   // sendOTPTest,
   sendOTPforForget,
   syncWallet,
@@ -33,6 +38,7 @@ import {
   verifyOTP,
   verifyOTPForForget,
   verifyUser,
+  videoUpload,
 } from "../controllers/userController.js";
 
 import {
@@ -46,6 +52,7 @@ import {
   getPackageById,
   selectPackage,
 } from "../controllers/packageController.js";
+import { setDP } from "../utils/uploader.js";
 
 router.route("/").post(protect, registerUser);
 router.route("/add-user-by-refferal").post(registerUserByReferral);
@@ -143,6 +150,28 @@ router.route("/get-followers").get(protect, getFollowers);
 
 //Get Search in all users
 router.route("/all-users").get(protect, findAllUser);
+
+//Get details of a user
+router.route("/get-user/:id").get(protect, findOnesDetail);
+
+// Upload profile picture new
+router.route("/upload-dp").post(protect, setDP);
+
+//Video uploading
+router.route("/upload-videos").post(protect,videoUpload)
+
+//Block a user
+router.route("/block-user").put(protect,blockAUser)
+
+//Report a user
+router.route("/report-user").post(protect,reportAccount)
+
+//Searching users from following list
+router.route("/search-following").get(protect,searchAllFollowing)
+
+//Searching users from followers list
+router.route("/search-followers").get(protect,searchAllFollowers)
+
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);
