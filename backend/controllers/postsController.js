@@ -73,33 +73,57 @@ export const likeAPost = asyncHandler(async (req, res) => {
 });
 
 // Get latest posts of following user
+
 export const getLatestPosts = asyncHandler(async (req, res) => {
   // Fetch the posts posted by following users
   const userId = req.user._id;
-  const following = await User.findById(userId).select("_id profilePic").populate({
+  const following = await User.findById(userId).populate({
     path: "following",
     select: "_id",
-  }).populate({ path: "profilePic", select: "filePath" })
+  });
 
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
 
-  const posts = await Media.find({
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+
+  let posts = await Media.find({
     userId: { $in: following.following },
-  })
+  }).populate({ path: "commentId", select: "comment" })
     .sort({ createdAt: -1 })
-    // .limit(10);
+  // .limit(10);
 
+  // Paginate the posts
+  posts = posts.slice(skip, skip + limit);
+
+
+  // Send username along with each post
+  let results = [];
+  if (posts) {
+    for (let i = 0; i < posts.length; i++) {
+      const user = await User.findById(posts[i].userId);
+      posts[i].username = user.firstName + " " + user.lastName;
+      // Check if the user is already liked the post
+      if (posts[i].likedBy.includes(userId)) {
+        posts[i].isLiked = true;
+      } else {
+        posts[i].isLiked = false;
+      }
+      results.push({ ...posts[i]._doc, username: posts[i].username, isLiked: posts[i].isLiked });
+    }
+  }
   if (posts) {
     res.status(200).json({
       status: "01",
       msg: "Success",
-      posts,
-      user:following
+      posts: results,
     });
   } else {
     res.status(404).json({
       status: "00",
       msg: "No posts found",
-     
     });
   }
 });
