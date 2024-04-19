@@ -1266,7 +1266,7 @@ export const getSuggestions = asyncHandler(async (req, res) => {
   const users = await User.find({})
     .populate({ path: "profilePic", select: "filePath" })
     .sort({ createdAt: -1 })
-    .limit(20)
+    // .limit(20)
     .select("firstName lastName isAccountVerified profilePic");
 
   if (users) {
@@ -1293,7 +1293,14 @@ export const getSuggestions = asyncHandler(async (req, res) => {
 export const getFollowing = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const user = await User.findById(userId)
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+
+ let user = await User.findById(userId)
     .select("following")
     .populate({
       path: "following",
@@ -1301,11 +1308,15 @@ export const getFollowing = asyncHandler(async (req, res) => {
       populate: { path: "profilePic", select: "filePath" },
     });
 
+  let following = user.following
+
+  // Paginate the following users 
+  following = following.slice(skip, skip + limit);
   if (user) {
     res.status(200).json({
       sts: "01",
       msg: "Following fetched successfully",
-      following: user.following,
+      following: following,
     });
   } else {
     res.status(400).json({ sts: "00", msg: "No following found" });
@@ -1315,26 +1326,54 @@ export const getFollowing = asyncHandler(async (req, res) => {
 
 // Get the followers
 export const getFollowers = asyncHandler(async (req, res) => {
+
   const userId = req.user._id;
 
-  const user = await User.findById(userId)
+  let user = await User.findById(userId)
     .select("followers")
     .populate({
       path: "followers",
-      select: "firstName lastName profilePic",
+      select: "firstName lastName profilePic followers",
       populate: { path: "profilePic", select: "filePath" },
     });
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
 
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+  user = user.followers;
+
+  // Paginate the followed users 
+  user = user.slice(skip, skip + limit);
+
+  console.log('USERR', user)
   if (user) {
+    const result = [];
+    user.forEach((eachUser) => {
+      // Check if user is already following
+      if (eachUser.followers.includes(userId)) {
+        eachUser.isFollowing = true;
+
+      } else {
+        eachUser.isFollowing = false;
+      }
+      result.push({
+        ...eachUser._doc,
+        isFollowing: eachUser.isFollowing,
+      });
+    });
+
     res.status(200).json({
       sts: "01",
       msg: "Followers fetched successfully",
-      followers: user.followers,
+      followers: result,
     });
   } else {
     res.status(400).json({ sts: "00", msg: "No following found" });
   }
 });
+
 
 // Get the level tree
 export const getLevelTree = asyncHandler(async (req, res) => {
@@ -1567,7 +1606,7 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
     //Fetching media datas of user
     const media = await Media.find({ userId: userId }).select("filePath likeCount")
 
-    result.push({ ...users._doc, isFollowing: users.isFollowing, followers: users.followers.length, following: users.following.length, post: media.length,media:media });
+    result.push({ ...users._doc, isFollowing: users.isFollowing, followers: users.followers.length, following: users.following.length, post: media.length, media: media });
 
     res
       .status(200)
@@ -1599,6 +1638,63 @@ export const reportAccount = asyncHandler(async (req, res) => {
   }
 
 
+});
+
+
+// Search in all following users
+export const searchAllFollowing = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+
+  let userId = req.user._id;
+
+  //Get users following user details
+  let user = await User.findById(userId)
+    .select("following")
+    .populate({
+      path: "following",
+      select: "firstName lastName profilePic",
+      populate: { path: "profilePic", select: "filePath" },
+    });
+
+  let searchText = req.query.search.toLowerCase();
+  const regex = new RegExp(`^${searchText}`, 'i'); // Case-insensitive regex that matches text starting with searchText
+
+  // Search by firstName or lastName
+  user = user.following.filter(user => regex.test(user.firstName.toLowerCase()) || regex.test(user.lastName.toLowerCase()));
+ 
+  if (user) {
+    res.status(200).json({ sts: "01", msg: "Fetched successfully", user });
+  } else {
+    res.status(404).json({ message: "No users found" });
+  }
+});
+
+// Search in all followers users
+export const searchAllFollowers = asyncHandler(async (req, res) => {
+  const { search } = req.query;
+
+  let userId = req.user._id;
+
+  //Get users followers user details
+  let user = await User.findById(userId)
+    .select("followers")
+    .populate({
+      path: "followers",
+      select: "firstName lastName profilePic",
+      populate: { path: "profilePic", select: "filePath" },
+    });
+
+  let searchText = req.query.search.toLowerCase();
+  const regex = new RegExp(`^${searchText}`, 'i'); // Case-insensitive regex that matches text starting with searchText
+
+  // Search by firstName or lastName
+  user = user.followers.filter(user => regex.test(user.firstName.toLowerCase()) || regex.test(user.lastName.toLowerCase()));
+ 
+  if (user) {
+    res.status(200).json({ sts: "01", msg: "Fetched successfully", user });
+  } else {
+    res.status(404).json({ message: "No users found" });
+  }
 });
 
 

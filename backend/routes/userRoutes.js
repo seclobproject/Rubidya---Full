@@ -39,6 +39,8 @@ import {
   blockAUser,
   reportAccount,
   findOnesDetail,
+  searchAllFollowing,
+  searchAllFollowers
 
 } from "../controllers/userController.js";
 
@@ -168,6 +170,12 @@ router.route("/report-user").post(protect,reportAccount)
 
 //Get details of a user
 router.route("/get-user/:id").get(protect,findOnesDetail)
+
+//Searching users from following list
+router.route("/search-following").get(protect,searchAllFollowing)
+
+//Searching users from followers list
+router.route("/search-followers").get(protect,searchAllFollowers)
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);
