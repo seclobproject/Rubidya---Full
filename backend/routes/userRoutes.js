@@ -35,24 +35,32 @@ import {
   // updateNewPackage,
   uploadImage,
   uploadProfilePicture,
+  uploadVideo,
   verifyOTP,
   verifyOTPForForget,
   verifyUser,
   videoUpload,
 } from "../controllers/userController.js";
 
-import {
-  resizeAndCompressImage,
-  resizeAndCompressImageForProfilePic,
-  upload,
-} from "../middleware/uploadMiddleware.js";
+// import {
+//   resizeAndCompressImage,
+//   resizeAndCompressImageForProfilePic,
+//   upload,
+// } from "../middleware/uploadMiddleware.js";
 
 import {
   getAllPackages,
   getPackageById,
   selectPackage,
 } from "../controllers/packageController.js";
-import { setDP } from "../utils/uploader.js";
+
+import {
+  resizeAndCompressImageForProfilePic,
+  uploadAndCompress,
+  uploadAndCompressVideo,
+  uploader,
+  videoUploader,
+} from "../utils/uploader.js";
 
 router.route("/").post(protect, registerUser);
 router.route("/add-user-by-refferal").post(registerUserByReferral);
@@ -80,9 +88,12 @@ router.route("/login").post(loginUser);
 router.route("/verify-user").post(protect, verifyUser);
 
 // Upload image
+// router
+//   .route("/upload-image")
+//   .post(protect, upload.single("media"), resizeAndCompressImage, uploadImage);
 router
   .route("/upload-image")
-  .post(protect, upload.single("media"), resizeAndCompressImage, uploadImage);
+  .post(protect, uploader.single("media"), uploadAndCompress, uploadImage);
 
 // Get uploaded image
 router.route("/get-media").get(protect, getMedia);
@@ -125,7 +136,7 @@ router
   .route("/add-profile-pic")
   .post(
     protect,
-    upload.single("media"),
+    uploader.single("media"),
     resizeAndCompressImageForProfilePic,
     uploadProfilePicture
   );
@@ -154,24 +165,28 @@ router.route("/all-users").get(protect, findAllUser);
 //Get details of a user
 router.route("/get-user/:id").get(protect, findOnesDetail);
 
-// Upload profile picture new
-router.route("/upload-dp").post(protect, setDP);
-
 //Video uploading
-router.route("/upload-videos").post(protect,videoUpload)
+// router.route("/upload-videos").post(protect, videoUpload);
+router
+  .route("/upload-videos")
+  .post(protect, videoUploader.single("media"), uploadAndCompressVideo, uploadVideo);
 
 //Block a user
-router.route("/block-user").put(protect,blockAUser)
+router.route("/block-user").put(protect, blockAUser);
 
 //Report a user
-router.route("/report-user").post(protect,reportAccount)
+router.route("/report-user").post(protect, reportAccount);
 
 //Searching users from following list
-router.route("/search-following").get(protect,searchAllFollowing)
+router.route("/search-following").get(protect, searchAllFollowing);
 
 //Searching users from followers list
-router.route("/search-followers").get(protect,searchAllFollowers)
+router.route("/search-followers").get(protect, searchAllFollowers);
 
+// Upload profile picture new
+// router
+//   .route("/upload-dp")
+//   .post(protect, uploader.single("media"), uploadAndCompress);
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);

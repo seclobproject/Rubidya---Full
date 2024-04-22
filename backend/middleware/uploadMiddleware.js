@@ -1,3 +1,8 @@
+import multer from "multer";
+import path from "path";
+import sharp from "sharp"; // Import Sharp for image compression
+import fs from "fs";
+
 const generateRandomString = (length) => {
   let result = "";
   const characters =
@@ -9,10 +14,6 @@ const generateRandomString = (length) => {
   return result;
 };
 
-import multer from "multer";
-import path from "path";
-import sharp from "sharp"; // Import Sharp for image compression
-import fs from "fs";
 
 const storage = multer.memoryStorage(); // Store the file in memory for processing
 

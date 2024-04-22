@@ -2,6 +2,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import User from "../models/userModel.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import multer from "multer";
 
 import Level from "../models/levelModel.js";
 import Media from "../models/mediaModel.js";
@@ -853,9 +854,38 @@ export const uploadImage = asyncHandler(async (req, res) => {
   }
 });
 
+// Upload Video
+export const uploadVideo = asyncHandler(async (req, res) => {
+
+  if (!req.file) {
+    res.status(400).json({ sts: "00", msg: "No file uploaded" });
+  }
+
+  const { description } = req.body;
+
+  const { path: filePath, mimetype: fileType, filename: fileName } = req.file;
+
+  const userId = req.user._id;
+
+  const media = await Media.create({
+    userId,
+    fileType,
+    fileName,
+    description,
+    filePath,
+  });
+
+  if (media) {
+    res.status(201).json({ sts: "01", msg: "Video uploaded successfully" });
+  } else {
+    res.status(400).json({ sts: "00", msg: "Error in uploading image" });
+  }
+});
+
 // Get all the media uploaded by the user
 export const getMedia = asyncHandler(async (req, res) => {
   const userId = req.user._id;
+
   const media = await Media.find({ userId }).populate(
     "userId",
     "firstName lastName"
@@ -1135,27 +1165,27 @@ export const editUserProfile = asyncHandler(async (req, res) => {
 export const uploadProfilePicture = asyncHandler(async (req, res) => {
   if (!req.file) {
     res.status(400).json({ sts: "00", msg: "No file uploaded" });
-  }
-
-  const { path: filePath, mimetype: fileType, filename: fileName } = req.file;
-
-  const userId = req.user._id;
-
-  const profilePic = await ProfilePic.findOneAndUpdate(
-    { userId: userId },
-    { fileType: fileType, fileName: fileName, filePath: filePath },
-    { upsert: true, new: true }
-  );
-
-  // Update user with profilePic id
-  const updateUser = await User.findByIdAndUpdate(userId, {
-    $set: { profilePic: profilePic._id },
-  });
-
-  if (profilePic && updateUser) {
-    res.status(201).json({ sts: "01", msg: "Image uploaded successfully" });
   } else {
-    res.status(400).json({ sts: "00", msg: "Error in uploading image" });
+    const { path: filePath, mimetype: fileType, filename: fileName } = req.file;
+
+    const userId = req.user._id;
+
+    const profilePic = await ProfilePic.findOneAndUpdate(
+      { userId: userId },
+      { fileType: fileType, fileName: fileName, filePath: filePath },
+      { upsert: true, new: true }
+    );
+
+    // Update user with profilePic id
+    const updateUser = await User.findByIdAndUpdate(userId, {
+      $set: { profilePic: profilePic._id },
+    });
+
+    if (profilePic && updateUser) {
+      res.status(201).json({ sts: "01", msg: "Image uploaded successfully" });
+    } else {
+      res.status(400).json({ sts: "00", msg: "Error in uploading image" });
+    }
   }
 });
 
@@ -1454,13 +1484,13 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
 // Set storage engine
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/videos/"); // Save uploaded files to the 'uploads/videos' folder
+    cb(null, "uploads/videos/");
   },
   filename: function (req, file, cb) {
     cb(
       null,
       file.fieldname + "-" + Date.now() + path.extname(file.originalname)
-    ); // Add timestamp to the filename to avoid duplicates
+    );
   },
 });
 
