@@ -719,18 +719,18 @@ export const verifyUser = asyncHandler(async (req, res) => {
               }
 
               // Update the remaining amount to the payId: RBD004779237
-              // const remainingAmount = amount - totalCommission;
+              const remainingAmount = amount - totalCommission;
 
-              // const payId = "RBD004779237";
-              // const uniqueId = "66000acbcfaa5d4ccb97b313";
+              const payId = "RBD004779237";
+              const uniqueId = "66000acbcfaa5d4ccb97b313";
 
-              // const response = await axios.post(
-              //   "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
-              //   { payId, uniqueId, amount: remainingAmount, currency: "RBD" }
-              // );
+              const response = await axios.post(
+                "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
+                { payId, uniqueId, amount: remainingAmount, currency: "RBD" }
+              );
 
-              // if (response.data.success === 1) {
-              //   console.log("Successfully added to payId: RBD004779237");
+              if (response.data.success === 1) {
+                console.log("Successfully added to payId: RBD004779237");
               const updatedUser = await user.save();
 
               if (updatedUser) {
@@ -740,12 +740,12 @@ export const verifyUser = asyncHandler(async (req, res) => {
               } else {
                 res.status(400).json({ sts: "00", msg: "User not verified" });
               }
-              // } else {
-              //   console.log("Failed to add to payId: RBD004779237");
-              //   res
-              //     .status(400)
-              //     .json({ sts: "00", msg: "Failed to add to payId" });
-              // }
+              } else {
+                console.log("Failed to add to payId: RBD004779237");
+                res
+                  .status(400)
+                  .json({ sts: "00", msg: "Failed to add to payId" });
+              }
             }
           } else {
             res.status(400).json({
