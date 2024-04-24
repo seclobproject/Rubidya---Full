@@ -83,11 +83,11 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
   });
 
   // Pagination parameters
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+  // const page = parseInt(req.query.page) || 1;
+  // const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
 
   // Calculate the skip value
-  const skip = (page - 1) * limit;
+  // const skip = (page - 1) * limit;
 
   let posts = await Media.find({
     userId: { $in: following.following },
@@ -96,7 +96,7 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
   // .limit(10);
 
   // Paginate the posts
-  posts = posts.slice(skip, skip + limit);
+  // posts = posts.slice(skip, skip + limit);
 
 
   // Send username along with each post
