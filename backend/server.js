@@ -8,6 +8,7 @@ import { errorHandler, notFound } from "./middleware/errorMiddleware.js";
 import userRoutes from "./routes/userRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
+import walletRoutes from "./routes/walletRoutes.js"
 
 const app = express();
 app.use(cors());
@@ -38,6 +39,7 @@ app.get("/", (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/posts", postRoutes);
+app.use("/api/wallet",walletRoutes);
 // API routes
 
 app.use(errorHandler);

@@ -889,7 +889,7 @@ export const getMedia = asyncHandler(async (req, res) => {
   const media = await Media.find({ userId }).populate(
     "userId",
     "firstName lastName"
-  );
+  ).sort({ createdAt: -1 });
 
   if (media) {
     res
@@ -1015,47 +1015,47 @@ export const changePassword = asyncHandler(async (req, res) => {
 });
 
 // Sync unrealised to wallet amount
-export const syncWallet = asyncHandler(async (req, res) => {
-  const userid = req.user._id;
+// export const syncWallet = asyncHandler(async (req, res) => {
+//   const userid = req.user._id;
 
-  if (userid) {
-    const user = await User.findById(userid);
+//   if (userid) {
+//     const user = await User.findById(userid);
 
-    if (user) {
-      // API to credit balance
-      const response = await axios.post(
-        "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
-        {
-          payId: user.payId,
-          uniqueId: user.uniqueId,
-          amount: user.walletAmount,
-          currency: "RBD",
-        }
-      );
+//     if (user) {
+//       // API to credit balance
+//       const response = await axios.post(
+//         "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
+//         {
+//           payId: user.payId,
+//           uniqueId: user.uniqueId,
+//           amount: user.walletAmount,
+//           currency: "RBD",
+//         }
+//       );
 
-      const dataFetched = response.data;
+//       const dataFetched = response.data;
 
-      if (dataFetched.success === 1) {
-        user.walletAmount = 0;
-        const updatedUser = await user.save();
-        if (updatedUser) {
-          res.status(200).json({
-            sts: "01",
-            msg: "Unrealised synced successfully",
-          });
-        } else {
-          res.status(400).json({ sts: "00", msg: "User not updated" });
-        }
-      } else {
-        res.status(400).json({ sts: "00", msg: "Error in syncing unrealised" });
-      }
-    } else {
-      res.status(400).json({ sts: "00", msg: "User not found" });
-    }
-  } else {
-    res.status(400).json({ sts: "00", msg: "Please login first" });
-  }
-});
+//       if (dataFetched.success === 1) {
+//         user.walletAmount = 0;
+//         const updatedUser = await user.save();
+//         if (updatedUser) {
+//           res.status(200).json({
+//             sts: "01",
+//             msg: "Unrealised synced successfully",
+//           });
+//         } else {
+//           res.status(400).json({ sts: "00", msg: "User not updated" });
+//         }
+//       } else {
+//         res.status(400).json({ sts: "00", msg: "Error in syncing unrealised" });
+//       }
+//     } else {
+//       res.status(400).json({ sts: "00", msg: "User not found" });
+//     }
+//   } else {
+//     res.status(400).json({ sts: "00", msg: "Please login first" });
+//   }
+// });
 
 // Get stats of number of users in each plan and the total amount to distribute
 export const getStats = asyncHandler(async (req, res) => {
@@ -1090,6 +1090,7 @@ export const getStats = asyncHandler(async (req, res) => {
 
 // Convert INR to rubidya
 export const convertINR = asyncHandler(async (req, res) => {
+
   const { amount } = req.body;
 
   // Get current rubidya market place
@@ -1202,7 +1203,7 @@ export const getProfilePicture = asyncHandler(async (req, res) => {
       profilePic,
     });
   } else {
-    res.status(400).json({ sts: "00", msg: "No profile picture found" });
+    res.status(200).json({ sts: "00", msg: "No profile picture found", profilePic });
   }
 });
 
@@ -1714,3 +1715,21 @@ export const reportAccount = asyncHandler(async (req, res) => {
     });
   }
 });
+
+//Deleting an image
+export const deleteImage = asyncHandler(async (req, res) => {
+
+  const image = req.query.imageId
+
+  // Use findOneAndDelete() to find and delete the media by ID
+  const deletedMedia = await Media.findOneAndDelete({ _id: image });
+  console.log('SAJ', deletedMedia)
+  if (deletedMedia) {
+    res.status(201).json({ sts: "01", msg: "Image deleted successfully" });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No image found" });
+  }
+
+
+});
+

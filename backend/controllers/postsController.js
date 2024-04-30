@@ -2,6 +2,7 @@ import asyncHandler from "../middleware/asyncHandler.js";
 import Media from "../models/mediaModel.js";
 
 import User from "../models/userModel.js";
+import Comment from "../models/commentModel.js";
 
 export const likeAPost = asyncHandler(async (req, res) => {
   const userId = req.user._id;
@@ -74,33 +75,41 @@ export const likeAPost = asyncHandler(async (req, res) => {
 export const getLatestPosts = asyncHandler(async (req, res) => {
   // Fetch the posts posted by following users
   const userId = req.user._id;
+
   const following = await User.findById(userId).populate({
     path: "following",
     select: "_id",
   });
 
   // Pagination parameters
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+  // const page = parseInt(req.query.page) || 1;
+  // const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
 
   // Calculate the skip value
-  const skip = (page - 1) * limit;
+  // const skip = (page - 1) * limit;
+
+  // let posts = await Media.find({
+  //   userId: { $in: following.following },
+  // })
+  //   .populate({ path: "commentId", select: "comment" })
+  //   .sort({ createdAt: -1 });
+  // .limit(10);
 
   let posts = await Media.find({
     userId: { $in: following.following },
   })
-    .populate({ path: "commentId", select: "comment" })
+    .populate({ path: "commentId", model: Comment, select: "comment" })
     .sort({ createdAt: -1 });
-  // .limit(10);
 
   // Paginate the posts
-  posts = posts.slice(skip, skip + limit);
+  // posts = posts.slice(skip, skip + limit);
 
   // Send username along with each post
   let results = [];
   if (posts) {
     for (let i = 0; i < posts.length; i++) {
-      const user = await User.findById(posts[i].userId);
+      const user = await User.findById(posts[i].userId).populate({ path: "profilePic", select: "filePath" });
+
       posts[i].username = user.firstName + " " + user.lastName;
       // Check if the user is already liked the post
       if (posts[i].likedBy.includes(userId)) {
@@ -112,6 +121,7 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
         ...posts[i]._doc,
         username: posts[i].username,
         isLiked: posts[i].isLiked,
+        profilePic: user.profilePic ? user.profilePic : null
       });
     }
   }

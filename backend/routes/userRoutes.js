@@ -8,6 +8,7 @@ import {
   changePassword,
   convertINR,
   deductRubideum,
+  deleteImage,
   editUserProfile,
   findAllUser,
   findOnesDetail,
@@ -30,7 +31,7 @@ import {
   searchAllFollowing,
   // sendOTPTest,
   sendOTPforForget,
-  syncWallet,
+  // syncWallet,
   unfollow,
   // updateNewPackage,
   uploadImage,
@@ -111,7 +112,7 @@ router.route("/get-refferal-tree-count").get(protect, refferalTreeCount);
 router.route("/deduct-rubideum").post(protect, deductRubideum);
 
 // Sync unrealised to rubideum wallet
-router.route("/sync-wallet").get(protect, syncWallet);
+// router.route("/sync-wallet").get(protect, syncWallet);
 
 // Get all packages
 router.route("/get-packages").get(protect, getAllPackages);
@@ -182,6 +183,9 @@ router.route("/search-following").get(protect, searchAllFollowing);
 
 //Searching users from followers list
 router.route("/search-followers").get(protect, searchAllFollowers);
+
+//Deleting an image uploaded
+router.route("/delete-image").delete(protect, deleteImage)
 
 // Upload profile picture new
 // router
