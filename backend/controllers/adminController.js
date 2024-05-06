@@ -203,7 +203,6 @@ export const getRevenueToAdmin = asyncHandler(async (req, res) => {
 
 // Split profit to users in prime and gold membership
 export const splitProfit = asyncHandler(async (req, res) => {
-
   // Get the total amount reached to company
   const revenue = await Revenue.findOne({}).select("monthlyRevenue");
 
@@ -425,7 +424,6 @@ export const getLevelTree = asyncHandler(async (req, res) => {
 
 // Get the verifications history
 export const getVerificationsHistory = asyncHandler(async (req, res) => {
-
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
 
@@ -503,111 +501,107 @@ export const searchInVerifications = asyncHandler(async (req, res) => {
   }
 });
 
-
 // Split profit to users in prime and gold membership
 export const splitProfitFunctionCron = asyncHandler(async (req, res) => {
-
-
   //Fetching package details
-  const packages = await Package.find().populate({
-    path: "users",
-    select: "walletAmount firstName transactions"
-  }).select("packageName monthlyDivident");
+  const packages = await Package.find()
+    .populate({
+      path: "users",
+      select: "walletAmount firstName transactions",
+    })
+    .select("packageName monthlyDivident");
 
   for (let eachPackage of packages) {
-    let monthlyDivident = eachPackage.monthlyDivident ? eachPackage.monthlyDivident : 0;
+    let monthlyDivident = eachPackage.monthlyDivident
+      ? eachPackage.monthlyDivident
+      : 0;
 
-    let usersCount = eachPackage.users && eachPackage.users.length ? eachPackage.users.length : 0
+    let usersCount =
+      eachPackage.users && eachPackage.users.length
+        ? eachPackage.users.length
+        : 0;
 
     if (monthlyDivident > 0 && usersCount > 0) {
-
       //Calculating amount to be credited
-      let amountToBeCredited = monthlyDivident / usersCount
-
+      let amountToBeCredited = monthlyDivident / usersCount;
 
       for (const user of eachPackage.users) {
-
         //Updating user and package details
 
-        user.walletAmount = user.walletAmount + amountToBeCredited
+        user.walletAmount = user.walletAmount + amountToBeCredited;
 
         user.transactions.push({
           amount: amountToBeCredited,
           fromWhom: "monthly_divident",
-          typeofTransaction: 'credit',
-          date: Date.now()
+          typeofTransaction: "credit",
+          date: Date.now(),
         });
 
         const updatedUser = await user.save();
 
-        eachPackage.monthlyDivident = 0
+        eachPackage.monthlyDivident = 0;
 
         const updatedPackage = await eachPackage.save();
       }
-
     }
-
   }
   // res.status(200).json({ sts: "01", msg: "Packages fetched successfully", packages });
 });
 
-
 //Function for adding feeds by admin
 export const addFeed = asyncHandler(async (req, res) => {
-
   if (!req.file) {
     res.status(400).json({ sts: "00", msg: "No file uploaded" });
   }
-  const { description } = req?.body
+  const { description } = req?.body;
 
-  const { path: filePath, mimetype: fileType, filename: fileName, key: Key } = req.file;
+  const {
+    path: filePath,
+    mimetype: fileType,
+    filename: fileName,
+    key: Key,
+  } = req.file;
 
   const feed = await Feed.create({
     fileType,
     fileName,
     description,
     filePath,
-    key: Key
+    key: Key,
   });
   if (feed) {
     res.status(201).json({ sts: "01", msg: "Image uploaded successfully" });
   } else {
     res.status(400).json({ sts: "00", msg: "Error in uploading image" });
   }
-})
-
+});
 
 //Getting feeds added by admin
 export const getFeed = asyncHandler(async (req, res) => {
-
   //Fetching data
-  const feedData = await Feed.find({})
+  const feedData = await Feed.find({});
 
   if (feedData) {
-
     res.status(200).json({
       sts: "01",
       msg: "feed fetched successfully",
-      feeds: feedData
+      feeds: feedData,
     });
-
   } else {
     res.status(400).json({ sts: "00", msg: "No feeds found" });
   }
-})
-
+});
 
 //Updating feed added
 export const editFeed = asyncHandler(async (req, res) => {
+  const { description } = req?.body;
 
-  const { description } = req?.body
-
-  const { feedId } = req?.params
+  const { feedId } = req?.params;
 
   if (!feedId) {
     res.json({
       msg: "please provide feedId",
-      sts: "00"
+      sts: "00",
     });
     throw new Error("Please provide feedId");
   }
@@ -615,7 +609,7 @@ export const editFeed = asyncHandler(async (req, res) => {
   if (!description) {
     res.json({
       msg: "please provide description",
-      sts: "00"
+      sts: "00",
     });
     throw new Error("Please provide feedId");
   }
@@ -623,58 +617,95 @@ export const editFeed = asyncHandler(async (req, res) => {
   //Fetching feed data
   const feed = await Feed.findById(feedId);
   if (feed) {
-
     const updateFeed = await Feed.findByIdAndUpdate(feedId, {
       description: description,
     });
 
     if (updateFeed) {
-
       res.status(200).json({ sts: "01", msg: "Feed updated successfully" });
-
     } else {
       res.status(400).json({ sts: "00", msg: "Feed not updated" });
     }
   } else {
     res.status(400).json({ sts: "00", msg: "Feed not found" });
   }
-})
+});
 
 //Function to delete feed
 export const deleteFeed = asyncHandler(async (req, res) => {
-
   const { feedId } = req?.body;
 
   if (!feedId) {
-
-    throw new Error("no feed i found")
+    throw new Error("no feed i found");
   }
 
   //Fetching data from feed
-  const singleFeedData = await Feed.findById(feedId)
+  const singleFeedData = await Feed.findById(feedId);
 
   if (!singleFeedData) {
-
     return res.json({
-      msg: `no data found with this id: ${feedId}`
-    })
+      msg: `no data found with this id: ${feedId}`,
+    });
   }
 
   //deleting uploaded image from s3 bucket
-  const deleteMediaFromS3 = await deleteFromS3(singleFeedData.key)
+  const deleteMediaFromS3 = await deleteFromS3(singleFeedData.key);
 
   if (deleteMediaFromS3) {
-
     await Feed.findByIdAndDelete(singleFeedData._id).then(() => {
       res.json({
         sts: "01",
-        msg: "deleted successfully"
-      })
-    })
+        msg: "deleted successfully",
+      });
+    });
   } else {
     res.json({
       sts: "00",
-      msg: "deletion failed"
-    })
+      msg: "deletion failed",
+    });
   }
-})
+});
+
+// Function to show all the performance income holders
+export const showAllPerformanceIncomeHolders = asyncHandler(
+  async (req, res) => {
+    const users = await User.find({
+      "performanceIncomeClub.length": { $gt: 0 },
+    }).select("performanceIncomeClub");
+
+    if (users) {
+      res.status(200).json({
+        sts: "01",
+        msg: "success",
+        users,
+      });
+    } else {
+      res.status(404).json({
+        sts: "00",
+        msg: "No users found",
+      });
+    }
+  }
+);
+
+// Function to show all the team performance income holders
+export const showTeamPerformanceIncomeHolders = asyncHandler(
+  async (req, res) => {
+    const users = await User.find({
+      "teamPerformanceIncomeClub.length": { $gt: 0 },
+    }).select("teamPerformanceIncomeClub");
+
+    if (users) {
+      res.status(200).json({
+        sts: "01",
+        msg: "success",
+        users,
+      });
+    } else {
+      res.status(404).json({
+        sts: "00",
+        msg: "No users found",
+      });
+    }
+  }
+);

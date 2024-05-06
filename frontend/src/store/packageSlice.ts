@@ -54,7 +54,7 @@ export const addPackage = createAsyncThunk('addPackage', async (data: any) => {
     const token: any = localStorage.getItem('userInfo');
     const parsedData = JSON.parse(token);
 
-    const { packageName, amount, memberProfit, benefits } = data;
+    const { packageName, amount, memberProfit, benefits, performanceIncomeName, performanceIncomeCount, teamPerformanceIncomeName, teamPerformanceIncomeCount } = data;
 
     const config = {
         headers: {
@@ -63,7 +63,11 @@ export const addPackage = createAsyncThunk('addPackage', async (data: any) => {
         },
     };
 
-    const response = await axios.post(`${URL}/api/admin/add-package`, { packageName, amount, memberProfit, benefits }, config);
+    const response = await axios.post(
+        `${URL}/api/admin/add-package`,
+        { packageName, amount, memberProfit, benefits, performanceIncomeName, performanceIncomeCount, teamPerformanceIncomeName, teamPerformanceIncomeCount },
+        config
+    );
 
     return response.data;
 });
@@ -82,7 +86,6 @@ export const addPackageSlice = createSlice({
                 state.loading = true;
             })
             .addCase(addPackage.fulfilled, (state, action) => {
-                
                 state.loading = false;
                 state.data = action.payload;
             })
@@ -90,7 +93,6 @@ export const addPackageSlice = createSlice({
                 state.loading = false;
                 console.error('Error', action.payload);
                 console.log(action.payload);
-                
 
                 if (action.error.message === 'Request failed with status code 500') {
                     state.error = 'Please make sure you filled package name and amount!';
@@ -147,7 +149,7 @@ export const editPackage = createAsyncThunk('editPackage', async (data: any) => 
     const token: any = localStorage.getItem('userInfo');
     const parsedData = JSON.parse(token);
 
-    const { packageId, packageName, amount, memberProfit, benefits } = data;
+    const { packageId, packageName, amount, memberProfit, benefits, performanceIncomeName, performanceIncomeCount, teamPerformanceIncomeName, teamPerformanceIncomeCount } = data;
 
     const config = {
         headers: {
@@ -156,7 +158,11 @@ export const editPackage = createAsyncThunk('editPackage', async (data: any) => 
         },
     };
 
-    const response = await axios.put(`${URL}/api/admin/edit-package`, { packageId, packageName, amount, memberProfit, benefits }, config);
+    const response = await axios.put(
+        `${URL}/api/admin/edit-package`,
+        { packageId, packageName, amount, memberProfit, benefits, performanceIncomeName, performanceIncomeCount, teamPerformanceIncomeName, teamPerformanceIncomeCount },
+        config
+    );
 
     return response.data;
 });

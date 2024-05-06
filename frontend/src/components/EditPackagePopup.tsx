@@ -12,10 +12,14 @@ const EditPackagePopup = ({ packageData, modal22, setModal22 }: any) => {
     const [amount, setAmount] = useState(packageData.amount);
     const [memberProfit, setMemberProfit] = useState(packageData.memberProfit);
     const [benefits, setBenefits] = useState(packageData.benefits);
+    const [performanceIncomeName, setPerformanceIncomeName] = useState(packageData.performanceIncomeName);
+    const [performanceIncomeCount, setPerformanceIncomeCount] = useState(packageData.performanceIncomeCount);
+    const [teamPerformanceIncomeName, setTeamPerformanceIncomeName] = useState(packageData.teamPerformanceIncomeName);
+    const [teamPerformanceIncomeCount, setTeamPerformanceIncomeCount] = useState(packageData.teamPerformanceIncomeCount);
 
     const submitEditHandler = () => {
         const packageId = packageData._id;
-        dispatch(editPackage({ packageId, packageName, amount, memberProfit, benefits }));
+        dispatch(editPackage({ packageId, packageName, amount, memberProfit, benefits, performanceIncomeName, performanceIncomeCount, teamPerformanceIncomeName, teamPerformanceIncomeCount }));
     };
 
     const handleBenefitChange = (index: number, benefit: string) => {
@@ -99,6 +103,50 @@ const EditPackagePopup = ({ packageData, modal22, setModal22 }: any) => {
                                                     )}
                                                 </div>
                                             ))}
+                                            <div className="relative mb-4">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Performance Income Name"
+                                                    value={performanceIncomeName}
+                                                    onChange={(e: any) => setPerformanceIncomeName(e.target.value)}
+                                                    className="form-input"
+                                                    id="performanceIncomeName"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="relative mb-4">
+                                                <input
+                                                    type="number"
+                                                    placeholder="Performance Income Count"
+                                                    value={performanceIncomeCount}
+                                                    onChange={(e: any) => setPerformanceIncomeCount(e.target.value)}
+                                                    className="form-input"
+                                                    id="performanceIncomeCount"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="relative mb-4">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Team Performance Income Name"
+                                                    value={teamPerformanceIncomeName}
+                                                    onChange={(e: any) => setTeamPerformanceIncomeName(e.target.value)}
+                                                    className="form-input"
+                                                    id="setTeamPerformanceIncomeName"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="relative mb-4">
+                                                <input
+                                                    type="number"
+                                                    placeholder="Team Performance Income Count"
+                                                    value={teamPerformanceIncomeCount}
+                                                    onChange={(e: any) => setTeamPerformanceIncomeCount(e.target.value)}
+                                                    className="form-input"
+                                                    id="teamPerformanceIncomeCount"
+                                                    required
+                                                />
+                                            </div>
                                             <button type="button" onClick={submitEditHandler} className="btn btn-primary w-full">
                                                 Submit
                                             </button>

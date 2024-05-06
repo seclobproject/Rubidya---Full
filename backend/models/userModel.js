@@ -83,12 +83,12 @@ const userSchema = new mongoose.Schema(
         amount: Number,
         kind: String,
         fromWhom: String,
-        toWhom:String,
+        toWhom: String,
         level: String,
         percentage: Number,
         status: String,
         typeofTransaction: String,
-        date:Date
+        date: Date,
       },
     ],
     // fundHistory: [
@@ -181,6 +181,20 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    performanceClub: [
+      {
+        packageName: String,
+        rankName: String,
+        status: Boolean,
+      },
+    ],
+    teamPerformanceClub: [
+      {
+        packageName: String,
+        rankName: String,
+        status: Boolean,
+      },
+    ],
   },
   {
     timestamps: true,

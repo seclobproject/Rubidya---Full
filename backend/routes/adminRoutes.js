@@ -16,12 +16,18 @@ import {
   handleActivation,
   searchAllusers,
   searchInVerifications,
+  showAllPerformanceIncomeHolders,
+  showTeamPerformanceIncomeHolders,
   // shareSplitting,
   splitProfit,
   splitProfitFunctionCron,
 } from "../controllers/adminController.js";
 import { protect } from "../middleware/authMiddleware.js";
-import { addPackage, editPackage, getUsersByPackage } from "../controllers/packageController.js";
+import {
+  addPackage,
+  editPackage,
+  getUsersByPackage,
+} from "../controllers/packageController.js";
 import { uploadAndCompress, uploader } from "../utils/uploader.js";
 const router = express.Router();
 
@@ -53,13 +59,13 @@ router.route("/edit-package").put(protect, editPackage);
 router.route("/split-profit").get(splitProfit);
 
 // Activate/deactivate the user
-router.route("/activation-handle").post(protect, handleActivation)
+router.route("/activation-handle").post(protect, handleActivation);
 
 // Edit user profile by admin
-router.route("/edit-user").put(protect, editProfileByAdmin)
+router.route("/edit-user").put(protect, editProfileByAdmin);
 
 // Get revenue to admin
-router.route("/get-revenue").get(protect, getRevenueToAdmin)
+router.route("/get-revenue").get(protect, getRevenueToAdmin);
 
 // Get the level tree
 router.route("/get-level-tree").get(protect, getLevelTree);
@@ -68,27 +74,40 @@ router.route("/get-level-tree").get(protect, getLevelTree);
 router.route("/get-users-by-package").get(protect, getUsersByPackage);
 
 // Get verification history
-router.route("/get-verifications-history").get(protect, getVerificationsHistory);
+router
+  .route("/get-verifications-history")
+  .get(protect, getVerificationsHistory);
 
 // Search in verification history
 router.route("/search-in-verifications").get(protect, searchInVerifications);
 
-router.route("/add-monthly-amount").post(splitProfitFunctionCron)
+router.route("/add-monthly-amount").post(splitProfitFunctionCron);
 
 // Share splitting
 // router.route("/share-splitting").get(protect, shareSplitting);
 
 //api's for adding feed (ads from admin)
-router.route("/add-feed").post(protect,uploader.single("media"), uploadAndCompress,addFeed)
+router
+  .route("/add-feed")
+  .post(protect, uploader.single("media"), uploadAndCompress, addFeed);
 
 //For editing feed added by admin
-router.route("/edit-feed/:feedId").post(protect,editFeed)
+router.route("/edit-feed/:feedId").post(protect, editFeed);
 
 //For getting feed added by admin
-router.route("/get-feed").get(protect,getFeed)
+router.route("/get-feed").get(protect, getFeed);
 
 //For deleting feed added by admin
-router.route("/delete-feed").post(protect,deleteFeed)
+router.route("/delete-feed").post(protect, deleteFeed);
 
+// For Performance income holders
+router
+  .route("/show-performance-income-holders")
+  .get(protect, showAllPerformanceIncomeHolders);
+
+// For Team performance income holders
+router
+  .route("/get-team-performance-income-holders")
+  .get(protect, showTeamPerformanceIncomeHolders);
 
 export default router;

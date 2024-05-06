@@ -4,7 +4,16 @@ import User from "../models/userModel.js";
 
 // Add new package by admin
 export const addPackage = asyncHandler(async (req, res) => {
-  const { packageName, amount, memberProfit, benefits } = req.body;
+  const {
+    packageName,
+    amount,
+    memberProfit,
+    benefits,
+    performanceIncomeName,
+    performanceIncomeCount,
+    teamPerformanceIncomeName,
+    teamPerformanceIncomeCount,
+  } = req.body;
 
   const packageSlug = packageName.toLowerCase().split(" ").join("-");
 
@@ -23,6 +32,10 @@ export const addPackage = asyncHandler(async (req, res) => {
       memberProfit,
       benefits,
       packageSlug,
+      performanceIncomeName,
+      performanceIncomeCount,
+      teamPerformanceIncomeName,
+      teamPerformanceIncomeCount,
     });
 
     if (addPackage) {
@@ -39,7 +52,18 @@ export const addPackage = asyncHandler(async (req, res) => {
 
 // Edit the package by admin
 export const editPackage = asyncHandler(async (req, res) => {
-  const { packageId, packageName, amount, memberProfit, benefits } = req.body;
+
+  const {
+    packageId,
+    packageName,
+    amount,
+    memberProfit,
+    benefits,
+    performanceIncomeName,
+    performanceIncomeCount,
+    teamPerformanceIncomeName,
+    teamPerformanceIncomeCount,
+  } = req.body;
 
   const selectedPackage = await Package.findById(packageId);
 
@@ -65,6 +89,10 @@ export const editPackage = asyncHandler(async (req, res) => {
     selectedPackage.amount = amount || selectedPackage.amount;
     selectedPackage.memberProfit = memberProfit || selectedPackage.memberProfit;
     selectedPackage.benefits = benefits || selectedPackage.benefits;
+    selectedPackage.performanceIncomeName = performanceIncomeName || selectedPackage.performanceIncomeName;
+    selectedPackage.performanceIncomeCount = performanceIncomeCount || selectedPackage.performanceIncomeCount;
+    selectedPackage.teamPerformanceIncomeName = teamPerformanceIncomeName || selectedPackage.teamPerformanceIncomeName;
+    selectedPackage.teamPerformanceIncomeCount = teamPerformanceIncomeCount || selectedPackage.teamPerformanceIncomeCount;
 
     const updatedPackage = await selectedPackage.save();
 
@@ -152,7 +180,6 @@ export const selectPackage = asyncHandler(async (req, res) => {
 
 // Get users based on packages
 export const getUsersByPackage = asyncHandler(async (req, res) => {
-
   const { packageId } = req.query;
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -170,7 +197,6 @@ export const getUsersByPackage = asyncHandler(async (req, res) => {
       msg: "Please select a package",
     });
   } else {
-
     const users = await Package.findById(packageId)
       .populate({
         path: "users",
@@ -201,11 +227,8 @@ export const getUsersByPackage = asyncHandler(async (req, res) => {
       res
         .status(200)
         .json({ users, pagination, sts: "01", msg: "Fetched successfully" });
-
     } else {
-
       res.status(404).json({ msg: "No users found" });
-
     }
   }
 });

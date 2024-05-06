@@ -38,6 +38,20 @@ const packageSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    performanceIncomeCount: {
+      type: Number,
+      default: 0,
+    },
+    teamPerformanceIncomeCount: {
+      type: Number,
+      default: 0,
+    },
+    performanceIncomeName: {
+      type: String,
+    },
+    teamPerformanceIncomeName: {
+      type: String,
+    },
   },
   {
     timestamps: true,
