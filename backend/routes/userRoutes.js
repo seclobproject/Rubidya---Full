@@ -16,6 +16,7 @@ import {
   getDirectReferredUsers,
   getFollowers,
   getFollowing,
+  getFundHistory,
   getMedia,
   getProfilePicture,
   getStats,
@@ -41,6 +42,8 @@ import {
   verifyOTPForForget,
   verifyUser,
   videoUpload,
+  getTransactionHistory,
+  getFeed
 } from "../controllers/userController.js";
 
 // import {
@@ -187,6 +190,12 @@ router.route("/search-followers").get(protect, searchAllFollowers);
 //Deleting an image uploaded
 router.route("/delete-image").delete(protect, deleteImage)
 
+//Getting fund history details of a user
+router.route("/get-fund-history/:userId").get(protect, getFundHistory)
+
+//Getting transaction history of user
+router.route("/get-transaction-history/:userId").get(protect, getTransactionHistory)
+
 // Upload profile picture new
 // router
 //   .route("/upload-dp")
@@ -194,5 +203,9 @@ router.route("/delete-image").delete(protect, deleteImage)
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);
+
+//getting ads from admin(pop-up)
+router.route("/get-feed").get(protect, getFeed)
+
 
 export default router;

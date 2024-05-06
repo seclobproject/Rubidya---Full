@@ -5,6 +5,7 @@ import User from "../models/userModel.js";
 import Comment from "../models/commentModel.js";
 
 export const likeAPost = asyncHandler(async (req, res) => {
+
   const userId = req.user._id;
   const { postId } = req.body;
 
@@ -13,6 +14,7 @@ export const likeAPost = asyncHandler(async (req, res) => {
 
   if (post) {
     if (post.likedBy.includes(userId)) {
+
       const updatePost = await Media.findByIdAndUpdate(
         postId,
         {
@@ -38,6 +40,7 @@ export const likeAPost = asyncHandler(async (req, res) => {
         });
       }
     } else {
+
       const updatePost = await Media.findByIdAndUpdate(
         postId,
         {
@@ -82,11 +85,11 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
   });
 
   // Pagination parameters
-  // const page = parseInt(req.query.page) || 1;
-  // const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5; // Default page size to 5 if not provided
 
   // Calculate the skip value
-  // const skip = (page - 1) * limit;
+  const skip = (page - 1) * limit;
 
   // let posts = await Media.find({
   //   userId: { $in: following.following },
@@ -98,16 +101,20 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
   let posts = await Media.find({
     userId: { $in: following.following },
   })
-    .populate({ path: "commentId", model: Comment, select: "comment" })
-    .sort({ createdAt: -1 });
+    .populate({ path: "commentId", model: Comment, select: "comment userId createdAt ", populate: { path: "userId", select: "firstName  lastName", populate: { path: "profilePic", select: "filePath" } } })
+    .sort({ createdAt: -1 })
+
+  let postCount = posts.length
 
   // Paginate the posts
-  // posts = posts.slice(skip, skip + limit);
+  posts = posts.slice(skip, skip + limit);
 
   // Send username along with each post
   let results = [];
   if (posts) {
     for (let i = 0; i < posts.length; i++) {
+
+
       const user = await User.findById(posts[i].userId).populate({ path: "profilePic", select: "filePath" });
 
       posts[i].username = user.firstName + " " + user.lastName;
@@ -117,11 +124,43 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
       } else {
         posts[i].isLiked = false;
       }
+
+
+      // Fetch the last person who liked the post
+      const lastLikedUserId = posts[i].likedBy[posts[i].likedBy.length - 1];
+      if (lastLikedUserId) {
+        const lastLikedUser = await User.findById(lastLikedUserId);
+        posts[i].lastLikedUserName = lastLikedUser.firstName + " " + lastLikedUser.lastName;
+      } else {
+        posts[i].lastLikedUserName = null;
+      }
+
+      //Fetch the last person who commented the post
+
+      const lastCommentId = posts[i].commentId[posts[i].commentId.length - 1];
+      if (lastCommentId) {
+
+        const lastComment = await Comment.findById(lastCommentId);
+
+        if (lastComment) {
+
+          const lastCommentedUser = await User.findById(lastComment.userId)
+          posts[i].lastCommentedUser = lastCommentedUser.firstName + " " + lastCommentedUser.lastName;
+        } else {
+          posts[i].lastCommentedUser = null;
+        }
+
+      } else {
+        posts[i].lastCommentedUser = null;
+      }
+
       results.push({
         ...posts[i]._doc,
         username: posts[i].username,
         isLiked: posts[i].isLiked,
-        profilePic: user.profilePic ? user.profilePic : null
+        profilePic: user.profilePic ? user.profilePic.filePath : null,
+        lastLikedUserName: posts[i].lastLikedUserName,
+        lastCommentedUser: posts[i].lastCommentedUser
       });
     }
   }
@@ -130,6 +169,7 @@ export const getLatestPosts = asyncHandler(async (req, res) => {
       status: "01",
       msg: "Success",
       posts: results,
+      postCount:postCount
     });
   } else {
     res.status(404).json({
@@ -260,3 +300,60 @@ export const deleteACommentToMyPost = asyncHandler(async (req, res) => {
     return res.status(404).json({ error: "No comment found" });
   }
 });
+
+//Get details of liked users 
+export const getLikesOfAPost = asyncHandler(async (req, res) => {
+
+  const userId = req.user._id;
+
+  const postId = req.params.postId;
+
+  // Fetch the details liked users of a post
+  let posts = await Media.findById(postId)
+    .populate({ path: "likedBy", select: "firstName lastName " });
+
+  if (posts) {
+
+    //Fetching details of user
+    let user = await User.findById(userId)
+
+    let likedBy = posts.likedBy
+
+    //Remove the user with the specified ID from the likedBy array
+    likedBy = likedBy.filter(user => user._id.toString() != userId);
+
+    let results = [];
+    let isFollowing;
+
+    //Looping through the likedBy details
+    for (const like of likedBy) {
+
+      //Checking if user if following the liked user
+      if (user.followers.includes(like._id)) {
+        isFollowing = true
+      } else {
+        isFollowing = false
+      }
+
+      results.push({
+        ...like._doc,
+        isFollowing: isFollowing
+      });
+    }
+
+    res.status(200).json({
+      status: "01",
+      msg: "Success",
+      results
+    });
+
+  } else {
+    res.status(404).json({
+      status: "00",
+      msg: "No posts found",
+    });
+  }
+
+});
+
+

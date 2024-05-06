@@ -44,11 +44,12 @@ export const creditWallet = asyncHandler(async (req, res) => {
                 $inc: { walletAmount: amount },
 
                 $push: {
-                    fundHistory: {
+                    transactions: {
                         amount: amount,
                         fromWhom: 'Rubideum',
                         typeofTransaction: 'credit',
-                        date: Date.now()
+                        date: Date.now(),
+                        kind: 'Rubideum to wallet'
                     }
                 }
             },
@@ -115,29 +116,48 @@ export const subscription = asyncHandler(async (req, res) => {
         // Check if the user has selected the package before.
         if (!user.packageName.includes(selectedPackage.packageSlug)) {
             //Checking if user have enough balance to purchase the package
-            if (user.walletAmount >= amount) {
+
+
+            // Get current rubidya market place
+            const response = await axios.get(
+                "https://pwyfklahtrh.rubideum.net/api/endPoint1/RBD_INR"
+            );
+
+            const currentValue = response.data.data.last_price;
+
+            let convertedAmount
+            if (currentValue) {
+                convertedAmount = amount / currentValue;
+
+            } else {
+                res.status(400).json({ sts: "00", msg: "Error in converting" });
+            }
+
+            if (user.walletAmount >= convertedAmount) {
 
                 //Deducting purchased amount from walletAmount of user
                 let updatedUser = await User.findByIdAndUpdate(
                     userId,
                     {
-                        $inc: { walletAmount: -amount },
+                        $inc: { walletAmount: -convertedAmount },
 
-                        $push: {
-                            fundHistory: {
-                                amount: amount,
-                                toWhom: 'Package',
-                                typeofTransaction: 'debit',
-                                date: Date.now()
-                            }
-                        }
+                        // $push: {
+                        //     fundHistory: {
+                        //         amount: amount,
+                        //         toWhom: 'Package',
+                        //         typeofTransaction: 'debit',
+                        //         date: Date.now()
+                        //     }
+                        // }
                     },
                     { new: true }
                 );
 
+
+
                 if (updatedUser) {
 
-                    res.status(200).json({ sts: "01", msg: "Package purchased successfully " });
+                    res.status(200).json({ sts: "01", msg: "Package purchased successfully ", deductedAmount: convertedAmount });
                 }
 
             } else {
@@ -176,11 +196,12 @@ export const withdraw = asyncHandler(async (req, res) => {
                     $inc: { walletAmount: -amount },
 
                     $push: {
-                        fundHistory: {
+                        transactions: {
                             amount: amount,
-                            toWhom: reciever._id,
+                            toWhom: reciever.firstName + ' ' + reciever.lastName,
                             typeofTransaction: 'debit',
-                            date: Date.now()
+                            date: Date.now(),
+                            kind: 'wallet to wallet'
                         }
                     }
                 },
@@ -194,11 +215,12 @@ export const withdraw = asyncHandler(async (req, res) => {
                     $inc: { walletAmount: amount },
 
                     $push: {
-                        fundHistory: {
+                        transactions: {
                             amount: amount,
-                            fromWhom: userId,
+                            fromWhom: user.firstName + ' ' + user.lastName,
                             typeofTransaction: 'credit',
-                            date: Date.now()
+                            date: Date.now(),
+                            kind: 'wallet to wallet'
                         }
                     }
                 },
@@ -235,14 +257,10 @@ export const payToRubideum = asyncHandler(async (req, res) => {
             {
                 payId: user.payId,
                 uniqueId: user.uniqueId,
-                amount: convertedAmount.convertedAmount,
+                amount: amount,
                 currency: "RBD"
 
 
-                // payId: 'RBD968793034',
-                // uniqueId: '64eaf0a9cec8b5bb72f56d01',
-                // amount: amount,
-                // currency: "RBD",
             });
 
         if (response.data.success === 1) {
@@ -254,11 +272,12 @@ export const payToRubideum = asyncHandler(async (req, res) => {
                     $inc: { walletAmount: -amount },
 
                     $push: {
-                        fundHistory: {
+                        transactions: {
                             amount: amount,
-                            toWhom: 'rubiduem',
+                            toWhom: 'rubideum',
                             typeofTransaction: 'debit',
-                            date: Date.now()
+                            date: Date.now(),
+                            kind: 'pay to rubideum'
                         }
                     }
                 },
