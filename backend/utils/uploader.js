@@ -1,9 +1,11 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import multer from "multer";
 import asyncHandler from "../middleware/asyncHandler.js";
 import sharp from "sharp";
 import path from "path";
+
+
 
 // Generate random string
 const generateRandomString = (length) => {
@@ -52,7 +54,7 @@ export const videoUploader = multer({
 });
 
 export const uploadAndCompressVideo = asyncHandler(async (req, res, next) => {
-  
+
   if (!req.file) {
     return res.status(400).send("No file uploaded");
   }
@@ -102,10 +104,12 @@ export const uploadAndCompress = asyncHandler(async (req, res, next) => {
   }
 
   try {
+
     // Resize and compress image
     const compressedBuffer = await sharp(req.file.buffer)
-      .resize({ width: 800 }) // Resize to desired width
-      .jpeg({ quality: 80 }) // Compress to JPEG format with specified quality
+      .resize({ width: 1000 }) // Resize to desired width
+      .jpeg({ quality: 90 }) // Compress to JPEG format with specified quality
+      // .jpeg({ quality: 90, progressive: true, chromaSubsampling: '4:4:4' })
       .toBuffer(); // Convert the image to a buffer
 
     // Generate random filename
@@ -120,6 +124,7 @@ export const uploadAndCompress = asyncHandler(async (req, res, next) => {
         Bucket: "rubidya",
         Key: `images/${randomFilename}`,
         Body: compressedBuffer,
+        // Body: req.file.buffer
       },
     };
 
@@ -133,7 +138,7 @@ export const uploadAndCompress = asyncHandler(async (req, res, next) => {
       req.file.path = uploadResult.Location; // Example path
       req.file.filename = randomFilename;
       req.file.mimetype = "image/jpeg"; // Adjust as necessary
-
+      req.file.key = uploadResult?.Key
       req.file.buffer = compressedBuffer; // Replace the original buffer with the compressed one
 
       next();
@@ -197,5 +202,20 @@ export const resizeAndCompressImageForProfilePic = async (req, res, next) => {
   } catch (error) {
     console.error("Error processing image:", error);
     return res.status(500).json({ sts: "00", msg: "Error processing image" });
+  }
+};
+
+export const deleteFromS3 = async (key) => {
+  try {
+    const deleteParams = {
+      Bucket: "rubidya",
+      Key: key,
+    };
+    await s3Client.send(new DeleteObjectCommand(deleteParams));
+    console.log("File deleted successfully from S3");
+    return true
+  } catch (err) {
+    console.error("Error deleting file from S3:", err);
+    return false
   }
 };

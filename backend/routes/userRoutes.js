@@ -8,6 +8,7 @@ import {
   changePassword,
   convertINR,
   deductRubideum,
+  deleteImage,
   editUserProfile,
   findAllUser,
   findOnesDetail,
@@ -15,6 +16,7 @@ import {
   getDirectReferredUsers,
   getFollowers,
   getFollowing,
+  getFundHistory,
   getMedia,
   getProfilePicture,
   getStats,
@@ -30,7 +32,7 @@ import {
   searchAllFollowing,
   // sendOTPTest,
   sendOTPforForget,
-  syncWallet,
+  // syncWallet,
   unfollow,
   // updateNewPackage,
   uploadImage,
@@ -40,6 +42,8 @@ import {
   verifyOTPForForget,
   verifyUser,
   videoUpload,
+  getTransactionHistory,
+  getFeed
 } from "../controllers/userController.js";
 
 // import {
@@ -111,7 +115,7 @@ router.route("/get-refferal-tree-count").get(protect, refferalTreeCount);
 router.route("/deduct-rubideum").post(protect, deductRubideum);
 
 // Sync unrealised to rubideum wallet
-router.route("/sync-wallet").get(protect, syncWallet);
+// router.route("/sync-wallet").get(protect, syncWallet);
 
 // Get all packages
 router.route("/get-packages").get(protect, getAllPackages);
@@ -183,6 +187,15 @@ router.route("/search-following").get(protect, searchAllFollowing);
 //Searching users from followers list
 router.route("/search-followers").get(protect, searchAllFollowers);
 
+//Deleting an image uploaded
+router.route("/delete-image").delete(protect, deleteImage)
+
+//Getting fund history details of a user
+router.route("/get-fund-history/:userId").get(protect, getFundHistory)
+
+//Getting transaction history of user
+router.route("/get-transaction-history/:userId").get(protect, getTransactionHistory)
+
 // Upload profile picture new
 // router
 //   .route("/upload-dp")
@@ -190,5 +203,9 @@ router.route("/search-followers").get(protect, searchAllFollowers);
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);
+
+//getting ads from admin(pop-up)
+router.route("/get-feed").get(protect, getFeed)
+
 
 export default router;

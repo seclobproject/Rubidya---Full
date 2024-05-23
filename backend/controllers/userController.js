@@ -16,6 +16,7 @@ import Revenue from "../models/revenueModel.js";
 import ProfilePic from "../models/profilePicModel.js";
 import mongoose from "mongoose";
 import Income from "../models/incomeModel.js";
+import Feed from "../models/feedModel.js";
 
 const generateRandomString = () => {
   const baseString = "RBD";
@@ -31,7 +32,7 @@ function generateOTP() {
 
 // Send OTP verification email
 const sendOTP = async ({ _id, email, countryCode, phone }, res) => {
-  console.log(countryCode, phone);
+ console.log(countryCode, phone);
   try {
     const OTP = generateOTP();
 
@@ -71,7 +72,7 @@ const sendOTP = async ({ _id, email, countryCode, phone }, res) => {
 
       // Check if 'res' is defined before calling 'json'
       if (res && typeof res.json === "function") {
-        res.status(200).json({
+res.status(200).json({
           status: "PENDING",
           message: "Verification OTP email sent",
           userId: _id,
@@ -540,7 +541,8 @@ export const verifyUser = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   // Send the original amount and the package selected.
-  const { amount, packageId } = req.body;
+  let { amount, packageId } = req.body;
+
 
   if (!amount || !packageId) {
     res
@@ -549,6 +551,7 @@ export const verifyUser = asyncHandler(async (req, res) => {
   } else {
     // Convert the amount type to number
     const newAmount = parseFloat(amount);
+
     // Get the package
     const selectedPackage = await Package.findById(packageId);
     if (!selectedPackage) {
@@ -807,13 +810,14 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(userId)
     .populate("packageSelected")
     .select("-password");
-
+  let walletAmount = user.walletAmount
   if (user) {
     const response = {
       sts: "01",
       msg: "Success",
       user: {
         ...user._doc,
+        walletAmount: walletAmount.toFixed(4),
         updatedDOB: user.dateOfBirth
           ? convertDate(user.dateOfBirth)
           : convertDate(user.createdAt),
@@ -886,15 +890,44 @@ export const uploadVideo = asyncHandler(async (req, res) => {
 export const getMedia = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  const media = await Media.find({ userId }).populate(
-    "userId",
-    "firstName lastName"
-  );
+
+  // const media = await Media.find({ userId }).populate(
+  //   "userId",
+  //   "firstName lastName",
+  // ).sort({ createdAt: -1 });
+
+  let media = await Media.find({ userId }).populate({
+    path: "userId",
+    select: "firstName lastName",
+    populate: { path: "profilePic", select: "filePath" },
+  }).sort({ createdAt: -1 });
+
+  let result = [];
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 5; // Default page size to 5 if not provided
+
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
 
   if (media) {
+    // Paginate the media
+    media = media.slice(skip, skip + limit);
+
+    for (const mediaData of media) {
+
+      result.push({
+        ...mediaData._doc,
+        userId: mediaData.userId._id,
+        firstName: mediaData.userId.firstName,
+        lastName: mediaData.userId.lastName,
+        profilePic: mediaData.userId.profilePic ? mediaData.userId.profilePic.filePath : null,
+
+      });
+    }
     res
       .status(200)
-      .json({ sts: "01", msg: "Success", postCount: media.length, media });
+      .json({ sts: "01", msg: "Success", postCount: media.length, media: result });
   } else {
     res.status(404).json({ sts: "00", msg: "No media found" });
   }
@@ -1015,52 +1048,54 @@ export const changePassword = asyncHandler(async (req, res) => {
 });
 
 // Sync unrealised to wallet amount
-export const syncWallet = asyncHandler(async (req, res) => {
-  const userid = req.user._id;
+// export const syncWallet = asyncHandler(async (req, res) => {
+//   const userid = req.user._id;
 
-  if (userid) {
-    const user = await User.findById(userid);
+//   if (userid) {
+//     const user = await User.findById(userid);
 
-    if (user) {
-      // API to credit balance
-      const response = await axios.post(
-        "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
-        {
-          payId: user.payId,
-          uniqueId: user.uniqueId,
-          amount: user.walletAmount,
-          currency: "RBD",
-        }
-      );
+//     if (user) {
+//       // API to credit balance
+//       const response = await axios.post(
+//         "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
+//         {
+//           payId: user.payId,
+//           uniqueId: user.uniqueId,
+//           amount: user.walletAmount,
+//           currency: "RBD",
+//         }
+//       );
 
-      const dataFetched = response.data;
+//       const dataFetched = response.data;
 
-      if (dataFetched.success === 1) {
-        user.walletAmount = 0;
-        const updatedUser = await user.save();
-        if (updatedUser) {
-          res.status(200).json({
-            sts: "01",
-            msg: "Unrealised synced successfully",
-          });
-        } else {
-          res.status(400).json({ sts: "00", msg: "User not updated" });
-        }
-      } else {
-        res.status(400).json({ sts: "00", msg: "Error in syncing unrealised" });
-      }
-    } else {
-      res.status(400).json({ sts: "00", msg: "User not found" });
-    }
-  } else {
-    res.status(400).json({ sts: "00", msg: "Please login first" });
-  }
-});
+//       if (dataFetched.success === 1) {
+//         user.walletAmount = 0;
+//         const updatedUser = await user.save();
+//         if (updatedUser) {
+//           res.status(200).json({
+//             sts: "01",
+//             msg: "Unrealised synced successfully",
+//           });
+//         } else {
+//           res.status(400).json({ sts: "00", msg: "User not updated" });
+//         }
+//       } else {
+//         res.status(400).json({ sts: "00", msg: "Error in syncing unrealised" });
+//       }
+//     } else {
+//       res.status(400).json({ sts: "00", msg: "User not found" });
+//     }
+//   } else {
+//     res.status(400).json({ sts: "00", msg: "Please login first" });
+//   }
+// });
 
 // Get stats of number of users in each plan and the total amount to distribute
 export const getStats = asyncHandler(async (req, res) => {
   // Fetch the package, populate users and take the sum of unrealisedMonthlyProfit of users
-  const packages = await Package.find().populate("users");
+  const packages = await Package.find().populate("users")
+    .sort({ amount: 1 });
+
   console.log(packages);
 
   if (packages) {
@@ -1081,7 +1116,6 @@ export const getStats = asyncHandler(async (req, res) => {
 
       memberProfits.push(result);
     }
-
     res.status(200).json({ sts: "01", msg: "Success", memberProfits });
   } else {
     res.status(400).json({ sts: "00", msg: "No data found" });
@@ -1090,6 +1124,7 @@ export const getStats = asyncHandler(async (req, res) => {
 
 // Convert INR to rubidya
 export const convertINR = asyncHandler(async (req, res) => {
+
   const { amount } = req.body;
 
   // Get current rubidya market place
@@ -1202,7 +1237,7 @@ export const getProfilePicture = asyncHandler(async (req, res) => {
       profilePic,
     });
   } else {
-    res.status(400).json({ sts: "00", msg: "No profile picture found" });
+    res.status(200).json({ sts: "00", msg: "No profile picture found", profilePic });
   }
 });
 
@@ -1463,18 +1498,38 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
       "filePath likeCount"
     );
 
-    result.push({
-      ...users._doc,
-      isFollowing: users.isFollowing,
-      followers: users.followers.length,
-      following: users.following.length,
-      post: media.length,
-      media: media,
-    });
+    // result.push({
+    //   ...users._doc,
+    //   isFollowing: users.isFollowing,
+    //   profilePic: users.profilePic ? users.profilePic.filePath : null,
+    //   isFollowing: users.isFollowing,
+    //   followers: users.followers.length,
+    //   following: users.following.length,
+    //   post: media.length,
+    //   media: media,
+    // });
+
+    for (const mediaData of media) {
+      result.push({
+        ...mediaData._doc,
+        userId: users._id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        following: users.following,
+        followers: users.followers,
+        isFollowing: users.isFollowing,
+        profilePic: users.profilePic ? users.profilePic.filePath : null,
+        isFollowing: users.isFollowing,
+        followers: users.followers.length,
+        following: users.following.length,
+        bio: users.bio,
+        post: media.length,
+      })
+    }
 
     res
       .status(200)
-      .json({ sts: "01", msg: "Users data fetched successfully", result });
+      .json({ sts: "01", msg: "Users data fetched successfully", media: result });
   } else {
     res.status(400).json({ sts: "00", msg: "No User found" });
   }
@@ -1714,3 +1769,116 @@ export const reportAccount = asyncHandler(async (req, res) => {
     });
   }
 });
+
+//Deleting an image
+export const deleteImage = asyncHandler(async (req, res) => {
+
+  const image = req.query.imageId
+
+  // Use findOneAndDelete() to find and delete the media by ID
+  const deletedMedia = await Media.findOneAndDelete({ _id: image });
+  console.log('SAJ', deletedMedia)
+  if (deletedMedia) {
+    res.status(201).json({ sts: "01", msg: "Image deleted successfully" });
+  } else {
+    res.status(400).json({ sts: "00", msg: "No image found" });
+  }
+
+
+});
+
+export const getFundHistory = asyncHandler(async (req, res) => {
+  const userId = req.params.userId;
+
+  const user = await User.findById(userId)
+
+    .select("fundHistory");
+
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+  let history = user.fundHistory
+
+  if (user) {
+    // Paginate the posts
+    history = history.slice(skip, skip + limit);
+
+    res.status(200).json({
+      status: "01",
+      msg: "Success",
+      history
+    });
+  } else {
+    res.status(404).json({ sts: "00", msg: "User not found" });
+  }
+});
+
+//Function to get transaction history of user
+export const getTransactionHistory = asyncHandler(async (req, res) => {
+  const userId = req.params.userId;
+
+  //Fetching transaction history of user
+  const user = await User.findById(userId).select("transactions");
+
+  // Pagination parameters
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+  // Calculate the skip value
+  const skip = (page - 1) * limit;
+
+
+  let result = [];
+  let history = user.transactions;
+
+  // Paginate the history
+  history = history.slice(skip, skip + limit);
+  let amount;
+
+  //Looping through the transaction history
+  for (const data of history) {
+
+    amount = data.amount.toFixed(4)
+
+    result.push({
+      ...data._doc,
+      amount: amount
+    });
+  }
+  if (user) {
+    res.status(200).json({
+      status: "01",
+      msg: "Success",
+      result
+    });
+  } else {
+    res.status(404).json({ sts: "00", msg: "User not found" });
+  }
+});
+
+//get feed (ads from admin)
+export const getFeed = asyncHandler(async (req, res) => {
+
+  //Fetching feed data
+  const feedData = await Feed.find({})
+
+  if (feedData) {
+
+    res.status(200).json({
+      sts: "01",
+      msg: "feed fetched successfully",
+      feeds: feedData
+    });
+
+  } else {
+    res.status(400).json({ sts: "00", msg: "No feeds found" });
+  }
+})
+
+
+
+
+

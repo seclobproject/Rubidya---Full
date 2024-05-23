@@ -6,6 +6,7 @@ import {
   deleteAComment,
   deleteACommentToMyPost,
   getLatestPosts,
+  getLikesOfAPost,
   likeAPost,
   postAComment,
 } from "../controllers/postsController.js";
@@ -21,6 +22,9 @@ router.route("/post-comment").post(protect, postAComment);
 
 //Delete a comment added by user
 router.route("/delete-comment/:id").delete(protect, deleteAComment);
+
+//Get likes details of a post
+router.route("/get-details-of-like/:postId").get(protect, getLikesOfAPost)
 
 //Delete a comment posted by other user to their post
 router
