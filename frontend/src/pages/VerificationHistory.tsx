@@ -20,6 +20,7 @@ const VerificationHistory = () => {
         setLoader(true);
 
         const response = await apiCall('/api/admin/get-verifications-history', 'get', '', { page: currentPage, limit: limitPerPage });
+console.log(response,"res");
 
         if (response?.status === 200) {
             setTableData(response?.data.datas);

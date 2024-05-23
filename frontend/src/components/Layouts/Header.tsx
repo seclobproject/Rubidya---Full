@@ -208,6 +208,25 @@ const Header = () => {
                             </button>
                         </NavLink>
                     </li>
+                   
+                    <li className="menu nav-item relative">
+                        <NavLink to="/upload-image">
+                            <button type="button" className="nav-link">
+                                <div className="flex items-center">
+                                    <span className="px-1">{t('Upload Image')}</span>
+                                </div>
+                            </button>
+                        </NavLink>
+                    </li>
+                    {/* <li className="menu nav-item relative">
+                        <NavLink to="/wallet-history">
+                            <button type="button" className="nav-link">
+                                <div className="flex items-center">
+                                    <span className="px-1">{t('Wallet History')}</span>
+                                </div>
+                            </button>
+                        </NavLink>
+                    </li> */}
                 </ul>
             </div>
         </header>

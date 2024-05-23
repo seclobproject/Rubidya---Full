@@ -6,6 +6,8 @@ import ManagePackages from '../pages/ManagePackages';
 import AllMembersList from '../pages/AllMembersList';
 import PackageMembers from '../pages/PackageMembers';
 import VerificationHistory from '../pages/VerificationHistory';
+import UploadImages from '../pages/UploadImages';
+import History from '../pages/Users/History';
 const IndexSales = lazy(() => import('../pages/Indexsales'));
 const Index = lazy(() => import('../pages/Index'));
 const Analytics = lazy(() => import('../pages/Analytics'));
@@ -147,6 +149,14 @@ const routes = [
     {
         path: '/verification-history',
         element: <VerificationHistory />,
+    },
+    {
+        path: '/upload-image',
+        element: <UploadImages />,
+    },
+    {
+        path: '/wallet-history',
+        element: <History />,
     },
     // analytics page
     {

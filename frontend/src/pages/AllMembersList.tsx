@@ -16,6 +16,8 @@ const AllMembersList = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [loader, setLoader] = useState(false);
     const [showWalletloader, setshowWalletLoader] = useState(false);
+    const [showWalletloaders, setshowWalletLoaders] = useState(false);
+
     const [search, setSearch] = useState('');
     const [totalPages, setTotalPages] = useState(1);
     const [limitPerPage, setLimitPerPage] = useState(10);
@@ -179,6 +181,38 @@ const AllMembersList = () => {
         }
     };
 
+    // show wallet amoount
+    const showWalletAmount=(rubidiyumWallet:number,isAccountVerified:any)=>{
+        console.log("workking");
+        console.log("rubidiyumWallet",rubidiyumWallet);
+
+        setshowWalletLoaders(true)
+        try {
+            if(isAccountVerified){
+                setshowWalletLoaders(false)
+                Swal.fire({
+                    icon: 'success',
+                    text: `Wallet amount: ${rubidiyumWallet} `,
+                    padding: '2em',
+                    customClass: 'sweet-alerts',
+                });
+            }else{
+                Swal.fire({
+                    icon: 'error',
+                    text: 'User not verified',
+                    padding: '2em',
+                    customClass: 'sweet-alerts',
+                });
+                setshowWalletLoaders(false);
+
+            }
+        } catch (error) {
+            setshowWalletLoader(false);
+            console.error(error);
+        }
+        
+    }
+
     const showEditModalHandler = (user: any) => {
         setSelectedUser({
             id: user._id,
@@ -240,7 +274,9 @@ const AllMembersList = () => {
                                 <th>Phone</th>
                                 <th>Pay ID</th>
                                 <th>Status</th>
-                                <th className="text-center">Wallet Amount</th>
+                                <th className="text-center">Rubidya Wallet</th>
+                                <th className="text-center">Rubideum wallet</th>
+
                                 <th className="text-center">Tree</th>
                                 <th className="text-center">Action</th>
                             </tr>
@@ -248,6 +284,8 @@ const AllMembersList = () => {
                         <tbody>
                             {tableData &&
                                 tableData.map((data, idx) => {
+                                    console.log(data,"datasdf");
+                                    
                                     return (
                                         <tr key={data._id}>
                                             <td>{idx + 1}</td>
@@ -278,6 +316,20 @@ const AllMembersList = () => {
                                                 )}
                                             </td>
                                             <td>
+                                                {showWalletloaders ? (
+                                                    <div className="flex justify-center">
+                                                        <span className="animate-spin border-[3px] border-transparent border-l-primary rounded-full w-6 h-6 inline-block align-middle m-auto mb-10"></span>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => showWalletAmount(data?.walletAmount,data.isAccountVerified)}
+                                                        className="badge whitespace-nowrap badge-outline-info p-2 rounded-lg"
+                                                    >
+                                                        Show Wallet
+                                                    </button>
+                                                )}
+                                            </td>
+                                            <td>
                                                 <button onClick={() => fetchTree(data._id)} className="badge whitespace-nowrap badge-outline-info p-2 rounded-lg">
                                                     Show Tree
                                                 </button>
@@ -288,7 +340,7 @@ const AllMembersList = () => {
                                                         offset={[0, 5]}
                                                         placement={'bottom-end'}
                                                         button={
-                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-70 m-auto">
+                                                            <svg width="25" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-70 m-auto">
                                                                 <circle cx="5" cy="12" r="2" stroke="currentColor" strokeWidth="1.5"></circle>
                                                                 <circle opacity="0.5" cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.5"></circle>
                                                                 <circle cx="19" cy="12" r="2" stroke="currentColor" strokeWidth="1.5"></circle>
@@ -299,6 +351,11 @@ const AllMembersList = () => {
                                                             <li>
                                                                 <button type="button" onClick={() => showEditModalHandler(data)}>
                                                                     Edit
+                                                                </button>
+                                                            </li>
+                                                            <li>
+                                                                <button type="button" onClick={() => navigate('/wallet-history', { state: { data } })}>
+                                                              History
                                                                 </button>
                                                             </li>
                                                             <li>

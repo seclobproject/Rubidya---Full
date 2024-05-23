@@ -2,7 +2,7 @@ import { URL } from '../Constants';
 import axios from 'axios';
 
 // Common function to all api calls
-export const apiCall = async (url: string, method: string, data?: any, params?: any) => {
+export const apiCall = async (url: string, method: string, data?: any, params?: any,contenttype?:any) => {
     try {
         const token: any = localStorage.getItem('userInfo');
         const parsedData = JSON.parse(token);
@@ -15,7 +15,7 @@ export const apiCall = async (url: string, method: string, data?: any, params?: 
             params: params,
             headers: {
                 Authorization: `Bearer ${parsedData.access_token}`,
-                'content-type': 'application/json',
+                'content-type': contenttype??'application/json',
             },
         });
 

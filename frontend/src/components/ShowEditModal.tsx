@@ -21,8 +21,11 @@ const ShowEditModal: React.FC<Props> = ({ modal21, setModal21, selectedUser }) =
 
         if (response?.status === 200) {
             setLoader(false);
+            setModal21(false);
         } else {
             setLoader(false);
+            setModal21(false);
+
         }
     };
 
