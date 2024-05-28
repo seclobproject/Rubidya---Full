@@ -32,7 +32,7 @@ function generateOTP() {
 
 // Send OTP verification email
 const sendOTP = async ({ _id, email, countryCode, phone }, res) => {
- console.log(countryCode, phone);
+  console.log(countryCode, phone);
   try {
     const OTP = generateOTP();
 
@@ -72,7 +72,7 @@ const sendOTP = async ({ _id, email, countryCode, phone }, res) => {
 
       // Check if 'res' is defined before calling 'json'
       if (res && typeof res.json === "function") {
-res.status(200).json({
+        res.status(200).json({
           status: "PENDING",
           message: "Verification OTP email sent",
           userId: _id,
@@ -536,13 +536,166 @@ export const deductRubideum = asyncHandler(async (req, res) => {
   }
 });
 
+const performanceIncome = async (user) => {
+  // Get the direct referred users
+  const referredUsers = user.referrals;
+  const packageCounts = {};
+
+  if (referredUsers.length !== 0) {
+    // Fetch each referred user and check his package selected. Take the total count of each package selected
+    // and will be stored in the packageCounts.
+
+    referredUsers.forEach((user) => {
+      if (user.packageName) {
+        user.packageName.forEach((packageName) => {
+          packageCounts[packageName] = (packageCounts[packageName] || 0) + 1;
+        });
+      }
+    });
+
+    // Fetch those packages from database
+    const packages = await Package.find({
+      packageSlug: { $in: Object.keys(packageCounts) },
+    });
+
+    if (packages) {
+      // Check if the package count is greater than the performanceIncomeCount of the package
+      // and push to performanceClub if it meets the requirement.
+
+      packages.forEach(async (eachPackage) => {
+        const packageName = eachPackage.packageSlug;
+        const packageCount = packageCounts[packageName];
+        const performanceIncomeCount = eachPackage.performanceIncomeCount;
+        const rankName = eachPackage.performanceIncomeName;
+
+        console.log(performanceIncomeCount);
+
+        if (performanceIncomeCount > packageCount) {
+          console.log(`${packageName} does not meet the requirement.`);
+        } else {
+          console.log(`${packageName} meets the requirement.`);
+
+          const performanceClubData = {
+            packageName,
+            rankName,
+            status: true,
+          };
+          // Check if packageName already exists in the performanceClub array
+
+          const packageExists = user.performanceClub.some(
+            (item) => item.packageName === performanceClubData.packageName
+          );
+
+          // If packageName doesn't exist, push the new object
+          if (!packageExists) {
+            user.performanceClub.push(performanceClubData);
+          }
+        }
+      });
+
+      await user.save();
+      return;
+    } else {
+      console.log("No packages found");
+      return;
+    }
+  } else {
+    console.log("No referred users");
+    return;
+  }
+};
+
+const teamPerformanceIncomeFn = async (user, teamLevel) => {
+  console.log(`user is ${user}`);
+  console.log(`teamLevel is ${teamLevel}`);
+  let packageCount = {};
+
+  teamPerformanceIncome(user, teamLevel, packageCount);
+  console.log(packageCount);
+
+  const packages = await Package.find();
+  if (packages) {
+    // Check if the package count is greater than the performanceIncomeCount of the package
+    // and push to performanceClub if it meets the requirement.
+
+    packages.forEach(async (eachPackage) => {
+      const packageName = eachPackage.packageSlug;
+      const teamPerformanceIncomeCount = eachPackage.teamPerformanceIncomeCount;
+      const rankName = eachPackage.teamPerformanceIncomeName;
+
+      const thisPackageCount = packageCount[packageName];
+
+      if (teamPerformanceIncomeCount > thisPackageCount) {
+        console.log(`${packageName} does not meet the requirement.`);
+      } else {
+        console.log(`${packageName} meets the requirement.`);
+
+        const teamPerformanceClubData = {
+          packageName,
+          rankName,
+          status: true,
+        };
+        // Check if packageName already exists in the teamPerformanceClub array
+
+        const packageExists = user.teamPerformanceClub.some(
+          (item) => item.packageName === teamPerformanceClubData.packageName
+        );
+
+        // If packageName doesn't exist, push the new object
+        if (!packageExists) {
+          user.performanceClub.push(teamPerformanceClubData);
+        } else {
+          console.log("Package already exists");
+          return;
+        }
+      }
+    });
+
+    await user.save();
+    return;
+  } else {
+    console.log("No packages found");
+    return;
+  }
+};
+
+const teamPerformanceIncome = async (user, teamLevel, packageCount) => {
+  // Base case: If user is null or teamLevel is 0, return
+  if (!user || teamLevel === 0) {
+    return;
+  }
+
+  // Get the direct referred users
+  const referredUsers = user.referrals;
+
+  console.log(referredUsers);
+
+  // Process each referred user
+  for (const referredUser of referredUsers) {
+    // Process the referred user here
+    const packagesOfUser = referredUser.packageName;
+
+    if (packagesOfUser) {
+      packagesOfUser.forEach((eachPackage) => {
+        packageCount[eachPackage] = (packageCount[eachPackage] || 0) + 1;
+      });
+
+      console.log(`packageCount is ${packageCount}`);
+      // Recursive call to traverse through referred user's team
+      await teamPerformanceIncome(referredUser, teamLevel - 1, packageCount);
+    } else {
+      console.log("No packages found");
+      return;
+    }
+  }
+};
+
 // Verify user API
 export const verifyUser = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
   // Send the original amount and the package selected.
   let { amount, packageId } = req.body;
-
 
   if (!amount || !packageId) {
     res
@@ -669,7 +822,9 @@ export const verifyUser = asyncHandler(async (req, res) => {
               const userName = user.firstName + " " + user.lastName;
               let currentUser = user.sponsor;
               let totalCommission = 0;
+              let teamLevel = percentages.length;
 
+              const updatedUser = await user.save();
               // Split the commission to users in the level tree based on the percentages
               while (currentUser && percentages.length > 0) {
                 if (!currentUser) {
@@ -721,6 +876,7 @@ export const verifyUser = asyncHandler(async (req, res) => {
 
                 // Save the user's database
                 const updateSponsor = await sponsor.save();
+                teamPerformanceIncomeFn(updateSponsor, teamLevel);
 
                 if (updateSponsor) {
                   if (sponsor.sponsor === null) {
@@ -746,9 +902,11 @@ export const verifyUser = asyncHandler(async (req, res) => {
 
               if (response.data.success === 1) {
                 console.log("Successfully added to payId: RBD004779237");
-                const updatedUser = await user.save();
 
-                if (updatedUser) {
+                const updatedUser2 = await user.save();
+                performanceIncome(updatedUser2);
+
+                if (updatedUser && updatedUser2) {
                   // New income document
                   const newIncome = await Income.create({
                     userId: userId,
@@ -810,7 +968,7 @@ export const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(userId)
     .populate("packageSelected")
     .select("-password");
-  let walletAmount = user.walletAmount
+  let walletAmount = user.walletAmount;
   if (user) {
     const response = {
       sts: "01",
@@ -860,7 +1018,6 @@ export const uploadImage = asyncHandler(async (req, res) => {
 
 // Upload Video
 export const uploadVideo = asyncHandler(async (req, res) => {
-
   if (!req.file) {
     res.status(400).json({ sts: "00", msg: "No file uploaded" });
   }
@@ -890,17 +1047,18 @@ export const uploadVideo = asyncHandler(async (req, res) => {
 export const getMedia = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-
   // const media = await Media.find({ userId }).populate(
   //   "userId",
   //   "firstName lastName",
   // ).sort({ createdAt: -1 });
 
-  let media = await Media.find({ userId }).populate({
-    path: "userId",
-    select: "firstName lastName",
-    populate: { path: "profilePic", select: "filePath" },
-  }).sort({ createdAt: -1 });
+  let media = await Media.find({ userId })
+    .populate({
+      path: "userId",
+      select: "firstName lastName",
+      populate: { path: "profilePic", select: "filePath" },
+    })
+    .sort({ createdAt: -1 });
 
   let result = [];
   // Pagination parameters
@@ -915,19 +1073,22 @@ export const getMedia = asyncHandler(async (req, res) => {
     media = media.slice(skip, skip + limit);
 
     for (const mediaData of media) {
-
       result.push({
         ...mediaData._doc,
         userId: mediaData.userId._id,
         firstName: mediaData.userId.firstName,
         lastName: mediaData.userId.lastName,
-        profilePic: mediaData.userId.profilePic ? mediaData.userId.profilePic.filePath : null,
-
+        profilePic: mediaData.userId.profilePic
+          ? mediaData.userId.profilePic.filePath
+          : null,
       });
     }
-    res
-      .status(200)
-      .json({ sts: "01", msg: "Success", postCount: media.length, media: result });
+    res.status(200).json({
+      sts: "01",
+      msg: "Success",
+      postCount: media.length,
+      media: result,
+    });
   } else {
     res.status(404).json({ sts: "00", msg: "No media found" });
   }
@@ -1093,8 +1254,7 @@ export const changePassword = asyncHandler(async (req, res) => {
 // Get stats of number of users in each plan and the total amount to distribute
 export const getStats = asyncHandler(async (req, res) => {
   // Fetch the package, populate users and take the sum of unrealisedMonthlyProfit of users
-  const packages = await Package.find().populate("users")
-    .sort({ amount: 1 });
+  const packages = await Package.find().populate("users").sort({ amount: 1 });
 
   console.log(packages);
 
@@ -1124,7 +1284,6 @@ export const getStats = asyncHandler(async (req, res) => {
 
 // Convert INR to rubidya
 export const convertINR = asyncHandler(async (req, res) => {
-
   const { amount } = req.body;
 
   // Get current rubidya market place
@@ -1237,7 +1396,9 @@ export const getProfilePicture = asyncHandler(async (req, res) => {
       profilePic,
     });
   } else {
-    res.status(200).json({ sts: "00", msg: "No profile picture found", profilePic });
+    res
+      .status(200)
+      .json({ sts: "00", msg: "No profile picture found", profilePic });
   }
 });
 
@@ -1524,12 +1685,14 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
         following: users.following.length,
         bio: users.bio,
         post: media.length,
-      })
+      });
     }
 
-    res
-      .status(200)
-      .json({ sts: "01", msg: "Users data fetched successfully", media: result });
+    res.status(200).json({
+      sts: "01",
+      msg: "Users data fetched successfully",
+      media: result,
+    });
   } else {
     res.status(400).json({ sts: "00", msg: "No User found" });
   }
@@ -1772,27 +1935,22 @@ export const reportAccount = asyncHandler(async (req, res) => {
 
 //Deleting an image
 export const deleteImage = asyncHandler(async (req, res) => {
-
-  const image = req.query.imageId
+  const image = req.query.imageId;
 
   // Use findOneAndDelete() to find and delete the media by ID
   const deletedMedia = await Media.findOneAndDelete({ _id: image });
-  console.log('SAJ', deletedMedia)
+  console.log("SAJ", deletedMedia);
   if (deletedMedia) {
     res.status(201).json({ sts: "01", msg: "Image deleted successfully" });
   } else {
     res.status(400).json({ sts: "00", msg: "No image found" });
   }
-
-
 });
 
 export const getFundHistory = asyncHandler(async (req, res) => {
   const userId = req.params.userId;
 
-  const user = await User.findById(userId)
-
-    .select("fundHistory");
+  const user = await User.findById(userId).select("fundHistory");
 
   // Pagination parameters
   const page = parseInt(req.query.page) || 1;
@@ -1800,7 +1958,7 @@ export const getFundHistory = asyncHandler(async (req, res) => {
 
   // Calculate the skip value
   const skip = (page - 1) * limit;
-  let history = user.fundHistory
+  let history = user.fundHistory;
 
   if (user) {
     // Paginate the posts
@@ -1809,7 +1967,7 @@ export const getFundHistory = asyncHandler(async (req, res) => {
     res.status(200).json({
       status: "01",
       msg: "Success",
-      history
+      history,
     });
   } else {
     res.status(404).json({ sts: "00", msg: "User not found" });
@@ -1830,7 +1988,6 @@ export const getTransactionHistory = asyncHandler(async (req, res) => {
   // Calculate the skip value
   const skip = (page - 1) * limit;
 
-
   let result = [];
   let history = user.transactions;
 
@@ -1840,19 +1997,18 @@ export const getTransactionHistory = asyncHandler(async (req, res) => {
 
   //Looping through the transaction history
   for (const data of history) {
-
-    amount = data.amount.toFixed(4)
+    amount = data.amount.toFixed(4);
 
     result.push({
       ...data._doc,
-      amount: amount
+      amount: amount,
     });
   }
   if (user) {
     res.status(200).json({
       status: "01",
       msg: "Success",
-      result
+      result,
     });
   } else {
     res.status(404).json({ sts: "00", msg: "User not found" });
@@ -1861,24 +2017,16 @@ export const getTransactionHistory = asyncHandler(async (req, res) => {
 
 //get feed (ads from admin)
 export const getFeed = asyncHandler(async (req, res) => {
-
   //Fetching feed data
-  const feedData = await Feed.find({})
+  const feedData = await Feed.find({});
 
   if (feedData) {
-
     res.status(200).json({
       sts: "01",
       msg: "feed fetched successfully",
-      feeds: feedData
+      feeds: feedData,
     });
-
   } else {
     res.status(400).json({ sts: "00", msg: "No feeds found" });
   }
-})
-
-
-
-
-
+});
