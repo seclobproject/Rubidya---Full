@@ -3,7 +3,7 @@ import User from "../models/userModel.js";
 import Package from "../models/packageModel.js";
 import axios from "axios";
 
-//Api to exchange from rubedya exchange to wallet amount
+
 export const creditWallet = asyncHandler(async (req, res) => {
     const userId = req.user._id;
 
@@ -11,6 +11,7 @@ export const creditWallet = asyncHandler(async (req, res) => {
 
     //Fetching user data
     const user = await User.findById(userId);
+
 
     if (
         !user.payId ||
@@ -21,6 +22,7 @@ export const creditWallet = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("Please send the payId and uniqueId");
     }
+
 
     // API to deduct balance
     const response = await axios.post(
@@ -34,7 +36,9 @@ export const creditWallet = asyncHandler(async (req, res) => {
         }
     );
 
+
     const dataFetched = response.data;
+
     if (dataFetched.success === 1) {
 
         //Updating users data by updating the wallet amount
@@ -71,38 +75,12 @@ export const creditWallet = asyncHandler(async (req, res) => {
     }
 });
 
-
-// Updating payId of a user
-export const editPayId = asyncHandler(async (req, res) => {
-    const userId = req.user._id;
-    const { payId } = req.body;
-
-    //Fetching data of a user
-    const existingUser = await User.findById(userId);
-    if (existingUser) {
-        const user = await User.findByIdAndUpdate(
-            userId,
-            { payId },
-            { new: true }
-        );
-        if (user) {
-            res.status(200).json({ sts: "01", msg: "PayId updated successfully" });
-        } else {
-            res.status(404).json({ sts: "00", msg: "User not found" });
-        }
-    } else {
-        res.status(404).json({ sts: "00", msg: "User not found" });
-    }
-});
-
 //Api to subscribe a package
 export const subscription = asyncHandler(async (req, res) => {
 
     const userId = req.user._id;
 
     const { amount, packageId } = req.body;
-
-
     //Fetching users data
     const user = await User.findById(userId);
 
@@ -115,7 +93,7 @@ export const subscription = asyncHandler(async (req, res) => {
 
         // Check if the user has selected the package before.
         if (!user.packageName.includes(selectedPackage.packageSlug)) {
-            //Checking if user have enough balance to purchase the package
+
 
 
             // Get current rubidya market place
@@ -133,6 +111,7 @@ export const subscription = asyncHandler(async (req, res) => {
                 res.status(400).json({ sts: "00", msg: "Error in converting" });
             }
 
+            //Checking if user have enough balance to purchase the package
             if (user.walletAmount >= convertedAmount) {
 
                 //Deducting purchased amount from walletAmount of user
@@ -141,23 +120,21 @@ export const subscription = asyncHandler(async (req, res) => {
                     {
                         $inc: { walletAmount: -convertedAmount },
 
-                        // $push: {
-                        //     fundHistory: {
-                        //         amount: amount,
-                        //         toWhom: 'Package',
-                        //         typeofTransaction: 'debit',
-                        //         date: Date.now()
-                        //     }
-                        // }
+                        //$push: {
+                        //fundHistory: {
+                        //amount: amount,
+                        //toWhom: 'Package',
+                        //typeofTransaction: 'debit',
+                        //date: Date.now()
+                        //}
+                        //}
                     },
                     { new: true }
                 );
 
-
-
                 if (updatedUser) {
 
-                    res.status(200).json({ sts: "01", msg: "Package purchased successfully ", deductedAmount: convertedAmount });
+                    res.status(200).json({ sts: "01", msg: "Package purchased successfully", deductedAmount: convertedAmount });
                 }
 
             } else {
@@ -173,6 +150,7 @@ export const subscription = asyncHandler(async (req, res) => {
 
 });
 
+
 //Api to withdraw amount from wallet
 export const withdraw = asyncHandler(async (req, res) => {
     const userId = req.user._id;
@@ -182,63 +160,79 @@ export const withdraw = asyncHandler(async (req, res) => {
     //Fetching users data
     const user = await User.findById(userId);
 
-    //Checking if user have enough balance to transfer
-    if (user.walletAmount >= amount) {
+    if (user) {
 
-        const reciever = await User.findOne({ phone: recievresNo })
-        // console.log('RECIEVER', reciever._id)
-        if (reciever) {
+        //Checking if user have enough balance to transfer
+        if (user.walletAmount >= amount) {
 
-            //Deducting amount from users account
-            let updatedUser = await User.findByIdAndUpdate(
-                userId,
-                {
-                    $inc: { walletAmount: -amount },
+            if (user.phone != recievresNo) {
 
-                    $push: {
-                        transactions: {
-                            amount: amount,
-                            toWhom: reciever.firstName + ' ' + reciever.lastName,
-                            typeofTransaction: 'debit',
-                            date: Date.now(),
-                            kind: 'wallet to wallet'
-                        }
+                const reciever = await User.findOne({ phone: recievresNo })
+                // console.log('RECIEVER', reciever._id)
+                if (reciever) {
+
+                    //Deducting amount from users account
+                    let updatedUser = await User.findByIdAndUpdate(
+                        userId,
+                        {
+                            $inc: { walletAmount: -amount },
+
+                            $push: {
+                                transactions: {
+                                    amount: amount,
+                                    toWhom: reciever.firstName + ' ' + reciever.lastName,
+                                    typeofTransaction: 'debit',
+                                    date: Date.now(),
+                                    kind: 'wallet to wallet'
+                                }
+                            }
+
+                        },
+                        { new: true }
+                    );
+
+                    //Credit amount of transfered user
+                    let updatedRecievedUser = await User.findByIdAndUpdate(
+                        reciever._id,
+                        {
+                            $inc: { walletAmount: amount },
+
+                            $push: {
+                                transactions: {
+                                    amount: amount,
+                                    fromWhom: user.firstName + ' ' + user.lastName,
+                                    typeofTransaction: 'credit',
+                                    date: Date.now(),
+                                    kind: 'wallet to wallet'
+                                }
+                            }
+                        },
+                        { new: true }
+                    );
+
+                    if (updatedUser && updatedRecievedUser) {
+                        res.status(200).json({ sts: "01", msg: "Amount transfered  successfully " });
                     }
-                },
-                { new: true }
-            );
 
-            //Credit amount of transfered user
-            let updatedRecievedUser = await User.findByIdAndUpdate(
-                reciever._id,
-                {
-                    $inc: { walletAmount: amount },
+                } else {
+                    res.status(404).json({ sts: "00", msg: "User not found to transfer" });
+                }
+            } else {
+                res.status(404).json({ sts: "00", msg: "Can not find exact matches for your search" });
 
-                    $push: {
-                        transactions: {
-                            amount: amount,
-                            fromWhom: user.firstName + ' ' + user.lastName,
-                            typeofTransaction: 'credit',
-                            date: Date.now(),
-                            kind: 'wallet to wallet'
-                        }
-                    }
-                },
-                { new: true }
-            );
-
-            if (updatedUser && updatedRecievedUser) {
-                res.status(200).json({ sts: "01", msg: "Amount transfered  successfully " });
             }
 
         } else {
-            res.status(404).json({ sts: "00", msg: "User not found to transfer" });
+            res.status(404).json({ sts: "00", msg: "Sorry,you dont have enough wallet amount to transfer" });
         }
-
     } else {
-        res.status(404).json({ sts: "00", msg: "Sorry,you dont have enough wallet amount to transfer" });
+        res.status(404).json({ sts: "00", msg: "User not fount" });
     }
 });
+
+
+
+
 
 //Pay to rubideum
 export const payToRubideum = asyncHandler(async (req, res) => {
@@ -251,48 +245,53 @@ export const payToRubideum = asyncHandler(async (req, res) => {
 
     if (user) {
 
-        //Adding amount to rubideum exchange
-        const response = await axios.post(
-            "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
-            {
-                payId: user.payId,
-                uniqueId: user.uniqueId,
-                amount: amount,
-                currency: "RBD"
+        if (user.walletAmount >= amount) {
 
-
-            });
-
-        if (response.data.success === 1) {
-
-            //Deducting amount from users wallet amount
-            let updatedUser = await User.findByIdAndUpdate(
-                userId,
+            //Adding amount to rubideum exchange
+            const response = await axios.post(
+                "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
                 {
-                    $inc: { walletAmount: -amount },
+                    payId: user.payId,
+                    uniqueId: user.uniqueId,
+                    amount: amount,
+                    currency: "RBD"
 
-                    $push: {
-                        transactions: {
-                            amount: amount,
-                            toWhom: 'rubideum',
-                            typeofTransaction: 'debit',
-                            date: Date.now(),
-                            kind: 'pay to rubideum'
+
+                });
+
+            if (response.data.success === 1) {
+
+                //Deducting amount from users wallet amount
+                let updatedUser = await User.findByIdAndUpdate(
+                    userId,
+                    {
+                        $inc: { walletAmount: -amount },
+
+                        $push: {
+                            transactions: {
+                                amount: amount,
+                                toWhom: 'rubideum',
+                                typeofTransaction: 'debit',
+                                date: Date.now(),
+                                kind: 'pay to rubideum'
+                            }
                         }
-                    }
-                },
-                { new: true }
-            );
+                    },
+                    { new: true }
+                );
 
-            if (updatedUser) {
+                if (updatedUser) {
 
-                res.status(200).json({ sts: "01", msg: "Amount added to rubideum exchange succesfully " });
+                    res.status(200).json({ sts: "01", msg: "Amount added to rubideum exchange succesfully " });
+                }
+
+            } else {
+                res
+                    .status(400)
+                    .json({ sts: "00", msg: "Failed to add  amount to rubideum exchange" });
             }
-
         } else {
-            res
-                .status(400)
-                .json({ sts: "00", msg: "Failed to add  amount to rubideum exchange" });
+            res.status(404).json({ sts: "00", msg: "Sorry,you dont have enough wallet amount to transfer" });
         }
 
     } else {
@@ -301,4 +300,3 @@ export const payToRubideum = asyncHandler(async (req, res) => {
 
 
 });
-

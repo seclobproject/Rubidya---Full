@@ -15,6 +15,27 @@ const commentSchema = new mongoose.Schema(
     comment: {
       type: String,
     },
+  
+	 likedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    likeCount: {
+      type: Number,
+      default: 0,
+    },
+    replyComment: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment",
+      },
+    ],
+    replyCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

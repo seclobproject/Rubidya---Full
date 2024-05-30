@@ -84,24 +84,25 @@ const userSchema = new mongoose.Schema(
         kind: String,
         fromWhom: String,
         toWhom:String,
-        level: String,
+	level: String,
         percentage: Number,
         status: String,
         typeofTransaction: String,
-        date:Date
+      	date:Date
       },
     ],
-    // fundHistory: [
-    //   {
-    //     amount: Number,
-    //     fromWhom: String,
-    //     name: String,
-    //     typeofTransaction: String,
-    //     toWhom: String,
-    //     date: Date
-    //   }
-    // ],
-    payId: {
+    fundHistory: [
+      {
+        amount: Number,
+        fromWhom: String,
+        name: String,
+	typeofTransaction: String,
+        toWhom:String,
+        date:Date
+      }
+    ],
+
+	payId: {
       type: String,
     },
     uniqueId: {

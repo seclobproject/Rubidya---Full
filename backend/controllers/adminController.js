@@ -203,7 +203,6 @@ export const getRevenueToAdmin = asyncHandler(async (req, res) => {
 
 // Split profit to users in prime and gold membership
 export const splitProfit = asyncHandler(async (req, res) => {
-
   // Get the total amount reached to company
   const revenue = await Revenue.findOne({}).select("monthlyRevenue");
 
@@ -508,10 +507,10 @@ export const searchInVerifications = asyncHandler(async (req, res) => {
 export const splitProfitFunctionCron = asyncHandler(async (req, res) => {
 
 
-  //Fetching package details
+
   const packages = await Package.find().populate({
     path: "users",
-    select: "walletAmount firstName transactions"
+    select: "walletAmount firstName transactions "
   }).select("packageName monthlyDivident");
 
   for (let eachPackage of packages) {
@@ -521,34 +520,41 @@ export const splitProfitFunctionCron = asyncHandler(async (req, res) => {
 
     if (monthlyDivident > 0 && usersCount > 0) {
 
-      //Calculating amount to be credited
       let amountToBeCredited = monthlyDivident / usersCount
 
-
+      // console.log('PACKAGE', amountToBeCredited)
+      // let updatedUser;
       for (const user of eachPackage.users) {
 
-        //Updating user and package details
+
 
         user.walletAmount = user.walletAmount + amountToBeCredited
 
+
+
         user.transactions.push({
           amount: amountToBeCredited,
-          fromWhom: "monthly_divident",
+          fromWhom: 'monthly_divident',
           typeofTransaction: 'credit',
           date: Date.now()
         });
-
         const updatedUser = await user.save();
 
         eachPackage.monthlyDivident = 0
 
         const updatedPackage = await eachPackage.save();
+
+
       }
 
     }
 
+
   }
-  // res.status(200).json({ sts: "01", msg: "Packages fetched successfully", packages });
+
+  //res.status(200).json({ sts: "01", msg: " success",packages });
+
+
 });
 
 
@@ -576,7 +582,6 @@ export const addFeed = asyncHandler(async (req, res) => {
   }
 })
 
-
 //Getting feeds added by admin
 export const getFeed = asyncHandler(async (req, res) => {
 
@@ -595,7 +600,6 @@ export const getFeed = asyncHandler(async (req, res) => {
     res.status(400).json({ sts: "00", msg: "No feeds found" });
   }
 })
-
 
 //Updating feed added
 export const editFeed = asyncHandler(async (req, res) => {
@@ -678,3 +682,4 @@ export const deleteFeed = asyncHandler(async (req, res) => {
     })
   }
 })
+

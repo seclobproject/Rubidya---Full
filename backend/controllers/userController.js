@@ -9,14 +9,17 @@ import Media from "../models/mediaModel.js";
 
 import { transporter } from "../config/nodeMailer.js";
 import UserOTPVerification from "../models/otpModel.js";
-
+import { deleteFromS3 } from "../utils/uploader.js";
 import axios from "axios";
 import Package from "../models/packageModel.js";
 import Revenue from "../models/revenueModel.js";
 import ProfilePic from "../models/profilePicModel.js";
 import mongoose from "mongoose";
 import Income from "../models/incomeModel.js";
-import Feed from "../models/feedModel.js";
+import Point from "../models/pointModel.js";
+import Comment from "../models/commentModel.js";
+
+import moments from 'moment-timezone';
 
 const generateRandomString = () => {
   const baseString = "RBD";
@@ -32,7 +35,7 @@ function generateOTP() {
 
 // Send OTP verification email
 const sendOTP = async ({ _id, email, countryCode, phone }, res) => {
- console.log(countryCode, phone);
+  console.log(countryCode, phone);
   try {
     const OTP = generateOTP();
 
@@ -72,7 +75,7 @@ const sendOTP = async ({ _id, email, countryCode, phone }, res) => {
 
       // Check if 'res' is defined before calling 'json'
       if (res && typeof res.json === "function") {
-res.status(200).json({
+        res.status(200).json({
           status: "PENDING",
           message: "Verification OTP email sent",
           userId: _id,
@@ -234,6 +237,20 @@ export const verifyOTP = asyncHandler(async (req, res) => {
             const deleteOTP = await UserOTPVerification.deleteMany({ userId });
 
             if (deleteOTP) {
+
+
+
+              let sponserUser = await User.findById(userId);
+
+              if (sponserUser.sponsor) {
+                //When the  user creates an account by reference of other user,referred user will get 25 points 
+                const point = await Point.create({
+                  userId: sponserUser.sponsor,
+                  point: 25,
+                  pointType: 'referal',
+                });
+              }
+
               res.json({
                 sts: "01",
                 msg: "OTP verified successfully",
@@ -402,6 +419,13 @@ export const registerUserByReferral = asyncHandler(async (req, res) => {
           { $push: { referrals: createUser._id } },
           { new: true }
         );
+
+        //When the  user creates an account by reference of other user,referred user will get 25 points
+        //const point = await Point.create({
+        //userId: userId,
+        //point: 25,
+        //pointType: 'referal',
+        //});
       }
 
       sendOTP(
@@ -542,7 +566,6 @@ export const verifyUser = asyncHandler(async (req, res) => {
 
   // Send the original amount and the package selected.
   let { amount, packageId } = req.body;
-
 
   if (!amount || !packageId) {
     res
@@ -811,7 +834,21 @@ export const getUserProfile = asyncHandler(async (req, res) => {
     .populate("packageSelected")
     .select("-password");
   let walletAmount = user.walletAmount
+
   if (user) {
+
+    let followers = user.followers;
+
+    //Remove the user with the specified ID from the followers array
+    followers = followers.filter(data => data._id.toString() != userId);
+
+
+    // let following = user.following;
+
+    //Remove the user with the specified ID from the following array
+    // following = following.filter(data => data._id.toString() != userId);
+
+
     const response = {
       sts: "01",
       msg: "Success",
@@ -821,8 +858,9 @@ export const getUserProfile = asyncHandler(async (req, res) => {
         updatedDOB: user.dateOfBirth
           ? convertDate(user.dateOfBirth)
           : convertDate(user.createdAt),
-        followersCount: user.followers.length,
+        followersCount: followers.length,
         followingCount: user.following.length,
+        // followingCount: following.length
       },
     };
     res.status(200).json(response);
@@ -839,7 +877,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
 
   const { description } = req.body;
 
-  const { path: filePath, mimetype: fileType, filename: fileName } = req.file;
+  const { path: filePath, mimetype: fileType, filename: fileName, key: Key } = req.file;
 
   const userId = req.user._id;
 
@@ -848,10 +886,58 @@ export const uploadImage = asyncHandler(async (req, res) => {
     fileType,
     fileName,
     description,
+    key: Key,
     filePath,
   });
 
   if (media) {
+
+    //Checking if post is of todays or not.
+    //const startOfToday = new Date();
+    //startOfToday.setHours(0, 0, 0, 0);
+
+    //const endOfToday = new Date();
+    //endOfToday.setHours(23, 59, 59, 999);
+
+
+    const startOfDayIST = moments.tz('Asia/Kolkata').startOf('day');
+    const endOfDayIST = moments.tz('Asia/Kolkata').endOf('day');
+    // Convert the start and end times to UTC
+    const startOfToday = startOfDayIST.clone().tz('UTC').toDate();
+    const endOfToday = endOfDayIST.clone().tz('UTC').toDate();
+
+    if (media.createdAt >= startOfToday && media.createdAt < endOfToday) {
+
+      // Check if this is the first post today
+      const isFirstPostToday = await Media.find({
+        userId: req.user._id,
+        createdAt: {
+          $gte: startOfToday,
+          $lt: endOfToday
+        }
+      })
+
+      // Check if there's any record in the point table today of type 'first_post'
+      const isFirstPostRecorded = await Point.findOne({
+        userId: req.user._id,
+        pointType: 'first_post',
+        createdAt: { $gte: startOfToday }
+      });
+
+      if (isFirstPostToday.length == 1 && !isFirstPostRecorded) {
+
+        //Create a record in point table
+        const points = await Point.create({
+          userId: req.user._id,
+          point: 5,
+          pointType: 'first_post',
+          mediaId: req.body.mediaId
+
+        });
+
+      }
+    }
+
     res.status(201).json({ sts: "01", msg: "Image uploaded successfully" });
   } else {
     res.status(400).json({ sts: "00", msg: "Error in uploading image" });
@@ -890,11 +976,11 @@ export const uploadVideo = asyncHandler(async (req, res) => {
 export const getMedia = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
+  //const media = await Media.find({ userId }).populate(
+  //"userId",
+  //"firstName lastName"
+  //).sort({ createdAt: -1 });
 
-  // const media = await Media.find({ userId }).populate(
-  //   "userId",
-  //   "firstName lastName",
-  // ).sort({ createdAt: -1 });
 
   let media = await Media.find({ userId }).populate({
     path: "userId",
@@ -902,19 +988,71 @@ export const getMedia = asyncHandler(async (req, res) => {
     populate: { path: "profilePic", select: "filePath" },
   }).sort({ createdAt: -1 });
 
+
   let result = [];
+
   // Pagination parameters
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 5; // Default page size to 5 if not provided
+  const limit = parseInt(req.query.limit) || 12; // Default page size to 5 if not provided
 
   // Calculate the skip value
   const skip = (page - 1) * limit;
 
   if (media) {
+
+    let totalPostCount = media.length;
     // Paginate the media
     media = media.slice(skip, skip + limit);
 
+    let lastLikedUser;
+    let lastCommentedUser;
+    let lastComment
+
     for (const mediaData of media) {
+
+
+      let lastLikedUserName;
+
+
+      // Fetch the last person who liked the post
+      if (mediaData.likedBy.length > 0) {
+
+        const lastLikedUserId = mediaData.likedBy[mediaData.likedBy.length - 1];
+
+        if (lastLikedUserId) {
+          lastLikedUser = await User.findById(lastLikedUserId);
+          //   // posts[i].
+          lastLikedUserName = lastLikedUser ? lastLikedUser.firstName + " " + lastLikedUser.lastName : null;
+
+        }
+
+      }
+      let lastCommentedUserName;
+      if (mediaData.commentId.length > 0) {
+
+        const lastCommentId = mediaData.commentId[mediaData.commentId.length - 1];
+
+        if (lastCommentId) {
+
+          lastComment = await Comment.findById(lastCommentId);
+
+          lastCommentedUser = await User.findById(lastComment.userId);
+
+
+          lastCommentedUserName = lastCommentedUser ? lastCommentedUser.firstName + " " + lastCommentedUser.lastName : null;
+
+        }
+
+      }
+      let isLiked;
+      if (mediaData.likedBy.includes(userId)) {
+        isLiked = true;
+      } else {
+        isLiked = false;
+      }
+
+
+
 
       result.push({
         ...mediaData._doc,
@@ -923,11 +1061,17 @@ export const getMedia = asyncHandler(async (req, res) => {
         lastName: mediaData.userId.lastName,
         profilePic: mediaData.userId.profilePic ? mediaData.userId.profilePic.filePath : null,
 
+        lastLikedUserName: lastLikedUserName ? lastLikedUserName : null,
+        lastCommentedUserName: lastCommentedUserName ? lastCommentedUserName : null,
+        isLiked: isLiked
       });
     }
+
+
+    //if (media) {
     res
       .status(200)
-      .json({ sts: "01", msg: "Success", postCount: media.length, media: result });
+      .json({ sts: "01", msg: "Success", postCount: totalPostCount, media: result });
   } else {
     res.status(404).json({ sts: "00", msg: "No media found" });
   }
@@ -1048,54 +1192,52 @@ export const changePassword = asyncHandler(async (req, res) => {
 });
 
 // Sync unrealised to wallet amount
-// export const syncWallet = asyncHandler(async (req, res) => {
-//   const userid = req.user._id;
+export const syncWallet = asyncHandler(async (req, res) => {
+  const userid = req.user._id;
 
-//   if (userid) {
-//     const user = await User.findById(userid);
+  if (userid) {
+    const user = await User.findById(userid);
 
-//     if (user) {
-//       // API to credit balance
-//       const response = await axios.post(
-//         "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
-//         {
-//           payId: user.payId,
-//           uniqueId: user.uniqueId,
-//           amount: user.walletAmount,
-//           currency: "RBD",
-//         }
-//       );
+    if (user) {
+      // API to credit balance
+      const response = await axios.post(
+        "https://pwyfklahtrh.rubideum.net/basic/creditBalanceAuto",
+        {
+          payId: user.payId,
+          uniqueId: user.uniqueId,
+          amount: user.walletAmount,
+          currency: "RBD",
+        }
+      );
 
-//       const dataFetched = response.data;
+      const dataFetched = response.data;
 
-//       if (dataFetched.success === 1) {
-//         user.walletAmount = 0;
-//         const updatedUser = await user.save();
-//         if (updatedUser) {
-//           res.status(200).json({
-//             sts: "01",
-//             msg: "Unrealised synced successfully",
-//           });
-//         } else {
-//           res.status(400).json({ sts: "00", msg: "User not updated" });
-//         }
-//       } else {
-//         res.status(400).json({ sts: "00", msg: "Error in syncing unrealised" });
-//       }
-//     } else {
-//       res.status(400).json({ sts: "00", msg: "User not found" });
-//     }
-//   } else {
-//     res.status(400).json({ sts: "00", msg: "Please login first" });
-//   }
-// });
+      if (dataFetched.success === 1) {
+        user.walletAmount = 0;
+        const updatedUser = await user.save();
+        if (updatedUser) {
+          res.status(200).json({
+            sts: "01",
+            msg: "Unrealised synced successfully",
+          });
+        } else {
+          res.status(400).json({ sts: "00", msg: "User not updated" });
+        }
+      } else {
+        res.status(400).json({ sts: "00", msg: "Error in syncing unrealised" });
+      }
+    } else {
+      res.status(400).json({ sts: "00", msg: "User not found" });
+    }
+  } else {
+    res.status(400).json({ sts: "00", msg: "Please login first" });
+  }
+});
 
 // Get stats of number of users in each plan and the total amount to distribute
 export const getStats = asyncHandler(async (req, res) => {
   // Fetch the package, populate users and take the sum of unrealisedMonthlyProfit of users
-  const packages = await Package.find().populate("users")
-    .sort({ amount: 1 });
-
+  const packages = await Package.find().populate("users").sort({ amount: 1 });
   console.log(packages);
 
   if (packages) {
@@ -1116,6 +1258,7 @@ export const getStats = asyncHandler(async (req, res) => {
 
       memberProfits.push(result);
     }
+
     res.status(200).json({ sts: "01", msg: "Success", memberProfits });
   } else {
     res.status(400).json({ sts: "00", msg: "No data found" });
@@ -1124,7 +1267,6 @@ export const getStats = asyncHandler(async (req, res) => {
 
 // Convert INR to rubidya
 export const convertINR = asyncHandler(async (req, res) => {
-
   const { amount } = req.body;
 
   // Get current rubidya market place
@@ -1140,7 +1282,8 @@ export const convertINR = asyncHandler(async (req, res) => {
       res.status(200).json({
         sts: "01",
         msg: "Converted successfully",
-        convertedAmount,
+        //convertedAmount,
+        convertedAmount: convertedAmount.toFixed(4)
       });
     } else {
       res.status(400).json({ sts: "00", msg: "Calculation failed" });
@@ -1237,7 +1380,7 @@ export const getProfilePicture = asyncHandler(async (req, res) => {
       profilePic,
     });
   } else {
-    res.status(200).json({ sts: "00", msg: "No profile picture found", profilePic });
+    res.status(200).json({ sts: "01", msg: "No profile picture found", profilePic });
   }
 });
 
@@ -1263,6 +1406,29 @@ export const follow = asyncHandler(async (req, res) => {
     );
 
     if (updateUser && updateFollower) {
+
+      //Fetching point data
+
+      const record = await Point.findOne({
+
+        userId: followerId,
+        point: 1,
+        pointType: 'follow',
+        followingUser: userId
+      });
+
+
+
+      //Create a record in point table against followed userId
+      if (!record) {
+        const points = await Point.create({
+          userId: followerId,
+          point: 1,
+          pointType: 'follow',
+          followingUser: userId
+
+        });
+      }
       res.status(200).json({ sts: "01", msg: "Followed successfully" });
     } else {
       res.status(400).json({ sts: "00", msg: "Error in following" });
@@ -1326,7 +1492,7 @@ export const getSuggestions = asyncHandler(async (req, res) => {
   }
 
   // Fetch all users
-  const allUsers = await User.find({})
+  const allUsers = await User.find({ _id: { $ne: req.user._id } })
     .populate({
       path: "profilePic",
       select: "filePath",
@@ -1366,12 +1532,7 @@ export const getSuggestions = asyncHandler(async (req, res) => {
 export const getFollowing = asyncHandler(async (req, res) => {
   const userId = req.user._id;
 
-  // Pagination parameters
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
 
-  // Calculate the skip value
-  const skip = (page - 1) * limit;
 
   let user = await User.findById(userId)
     .select("following")
@@ -1381,11 +1542,29 @@ export const getFollowing = asyncHandler(async (req, res) => {
       populate: { path: "profilePic", select: "filePath" },
     });
 
-  let following = user.following;
 
-  // Paginate the following users
-  following = following.slice(skip, skip + limit);
+
+
   if (user) {
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+    // Calculate the skip value
+    const skip = (page - 1) * limit;
+
+
+
+    let following = user.following;
+
+    //Remove the user with the specified ID from the followers array
+    following = following.filter(data => data._id.toString() != userId);
+
+
+    // Paginate the following users
+    following = following.slice(skip, skip + limit);
+
     res.status(200).json({
       sts: "01",
       msg: "Following fetched successfully",
@@ -1407,19 +1586,24 @@ export const getFollowers = asyncHandler(async (req, res) => {
       select: "firstName lastName profilePic followers",
       populate: { path: "profilePic", select: "filePath" },
     });
-  // Pagination parameters
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
 
-  // Calculate the skip value
-  const skip = (page - 1) * limit;
-  user = user.followers;
-
-  // Paginate the followed users
-  user = user.slice(skip, skip + limit);
-
-  console.log("USERR", user);
   if (user) {
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+    // Calculate the skip value
+    const skip = (page - 1) * limit;
+    user = user.followers;
+
+    //Remove the user with the specified ID from the followers array
+    user = user.filter(data => data._id.toString() != userId);
+
+    // Paginate the followed users
+    user = user.slice(skip, skip + limit);
+
+
     const result = [];
     user.forEach((eachUser) => {
       // Check if user is already following
@@ -1476,6 +1660,7 @@ export const findAllUser = asyncHandler(async (req, res) => {
 
 //Get user detail
 export const findOnesDetail = asyncHandler(async (req, res) => {
+  let id = req.user._id;
   //Fetching userId
   const userId = req.params.id;
   //Fetching data of a user
@@ -1493,43 +1678,124 @@ export const findOnesDetail = asyncHandler(async (req, res) => {
       users.isFollowing = false;
     }
 
-    //Fetching media datas of user
-    const media = await Media.find({ userId: userId }).select(
-      "filePath likeCount"
-    );
 
-    // result.push({
-    //   ...users._doc,
-    //   isFollowing: users.isFollowing,
-    //   profilePic: users.profilePic ? users.profilePic.filePath : null,
-    //   isFollowing: users.isFollowing,
-    //   followers: users.followers.length,
-    //   following: users.following.length,
-    //   post: media.length,
-    //   media: media,
-    // });
-
-    for (const mediaData of media) {
-      result.push({
-        ...mediaData._doc,
-        userId: users._id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        following: users.following,
-        followers: users.followers,
-        isFollowing: users.isFollowing,
-        profilePic: users.profilePic ? users.profilePic.filePath : null,
-        isFollowing: users.isFollowing,
-        followers: users.followers.length,
-        following: users.following.length,
-        bio: users.bio,
-        post: media.length,
-      })
+    let isMyPost;
+    if (id.equals(userId)) {
+      isMyPost = true
+    }
+    else {
+      isMyPost = false
     }
 
-    res
-      .status(200)
-      .json({ sts: "01", msg: "Users data fetched successfully", media: result });
+    //Fetching media datas of user
+    const media = await Media.find({ userId: userId }).select(
+      "filePath likeCount commentCount description likedBy commentId"
+    ).sort({ createdAt: -1 });
+
+    //result.push({
+    //...users._doc,
+    //isFollowing: users.isFollowing,
+    //profilePic: users.profilePic ? users.profilePic.filePath : null,
+    //followers: users.followers.length,
+    //following: users.following.length,
+    //post: media.length,
+    //media: media,
+    //});
+
+
+    if (media.length) {
+
+
+      let lastLikedUser;
+      let lastCommentedUser;
+      let lastComment
+
+      for (const mediaData of media) {
+
+
+        let lastLikedUserName;
+
+
+        // Fetch the last person who liked the post
+        if (mediaData.likedBy.length > 0) {
+
+          const lastLikedUserId = mediaData.likedBy[mediaData.likedBy.length - 1];
+
+          if (lastLikedUserId) {
+            lastLikedUser = await User.findById(lastLikedUserId);
+            //   // posts[i].
+            lastLikedUserName = lastLikedUser ? lastLikedUser.firstName + " " + lastLikedUser.lastName : null;
+
+          }
+
+        }
+
+        let lastCommentedUserName;
+        if (mediaData.commentId.length > 0) {
+
+          const lastCommentId = mediaData.commentId[mediaData.commentId.length - 1];
+
+          if (lastCommentId) {
+
+            lastComment = await Comment.findById(lastCommentId);
+
+            lastCommentedUser = await User.findById(lastComment.userId);
+
+
+            lastCommentedUserName = lastCommentedUser ? lastCommentedUser.firstName + " " + lastCommentedUser.lastName : null;
+
+          }
+
+        }
+
+        let isLiked;
+        if (mediaData.likedBy.includes(userId)) {
+          isLiked = true;
+        } else {
+          isLiked = false;
+        }
+
+        result.push({
+          ...mediaData._doc,
+          userId: users._id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          following: users.following,
+          followers: users.followers,
+          isFollowing: users.isFollowing,
+          profilePic: users.profilePic ? users.profilePic.filePath : null,
+          isFollowing: users.isFollowing,
+          followers: users.followers.length,
+          following: users.following.length,
+          bio: users.bio,
+          lastLikedUserName: lastLikedUserName ? lastLikedUserName : null,
+          lastCommentedUserName: lastCommentedUserName ? lastCommentedUserName : null,
+          isLiked: isLiked,
+          isMyPost: isMyPost,
+          post: media.length,
+
+        })
+      }
+
+      res
+        .status(200)
+        .json({ sts: "01", msg: "Users data fetched successfully", media: result });
+    } else {
+
+      result.push({
+        ...users._doc,
+        userId: users._id,
+        isFollowing: users.isFollowing,
+        profilePic: users.profilePic ? users.profilePic.filePath : null,
+        followers: users.followers.length,
+        following: users.following.length,
+        post: media ? media.length : null
+      })
+
+      res
+        .status(200)
+        .json({ sts: "01", msg: "Users data fetched successfully", media: result });
+    }
   } else {
     res.status(400).json({ sts: "00", msg: "No User found" });
   }
@@ -1770,52 +2036,6 @@ export const reportAccount = asyncHandler(async (req, res) => {
   }
 });
 
-//Deleting an image
-export const deleteImage = asyncHandler(async (req, res) => {
-
-  const image = req.query.imageId
-
-  // Use findOneAndDelete() to find and delete the media by ID
-  const deletedMedia = await Media.findOneAndDelete({ _id: image });
-  console.log('SAJ', deletedMedia)
-  if (deletedMedia) {
-    res.status(201).json({ sts: "01", msg: "Image deleted successfully" });
-  } else {
-    res.status(400).json({ sts: "00", msg: "No image found" });
-  }
-
-
-});
-
-export const getFundHistory = asyncHandler(async (req, res) => {
-  const userId = req.params.userId;
-
-  const user = await User.findById(userId)
-
-    .select("fundHistory");
-
-  // Pagination parameters
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
-
-  // Calculate the skip value
-  const skip = (page - 1) * limit;
-  let history = user.fundHistory
-
-  if (user) {
-    // Paginate the posts
-    history = history.slice(skip, skip + limit);
-
-    res.status(200).json({
-      status: "01",
-      msg: "Success",
-      history
-    });
-  } else {
-    res.status(404).json({ sts: "00", msg: "User not found" });
-  }
-});
-
 //Function to get transaction history of user
 export const getTransactionHistory = asyncHandler(async (req, res) => {
   const userId = req.params.userId;
@@ -1830,12 +2050,15 @@ export const getTransactionHistory = asyncHandler(async (req, res) => {
   // Calculate the skip value
   const skip = (page - 1) * limit;
 
-
   let result = [];
   let history = user.transactions;
 
+  // Reverse the transactions to get the latest first
+  history = history.reverse();
+
   // Paginate the history
   history = history.slice(skip, skip + limit);
+
   let amount;
 
   //Looping through the transaction history
@@ -1859,26 +2082,237 @@ export const getTransactionHistory = asyncHandler(async (req, res) => {
   }
 });
 
-//get feed (ads from admin)
-export const getFeed = asyncHandler(async (req, res) => {
 
-  //Fetching feed data
-  const feedData = await Feed.find({})
 
-  if (feedData) {
+// Get the following list
+export const getFollowingList = asyncHandler(async (req, res) => {
 
-    res.status(200).json({
-      sts: "01",
-      msg: "feed fetched successfully",
-      feeds: feedData
+  const userId = req.params.userId;
+  if (!userId) {
+
+    throw new Error("No user id found")
+  }
+  let user = await User.findById(userId)
+    .select("following")
+    .populate({
+      path: "following",
+      select: "firstName lastName profilePic",
+      populate: { path: "profilePic", select: "filePath" },
     });
 
+
+  if (user) {
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+    // Calculate the skip value
+    const skip = (page - 1) * limit;
+
+    let following = user.following;
+
+    if (following.length) {
+
+      //Remove the user with the specified ID from the followers array
+      following = following.filter(data => data._id.toString() != userId);
+
+
+
+      // Paginate the following users
+      following = following.slice(skip, skip + limit);
+
+      res.status(200).json({
+        sts: "01",
+        msg: "Following fetched successfully",
+        following: following,
+      });
+    } else {
+      res.status(400).json({ sts: "00", msg: "No followings found" });
+    }
   } else {
-    res.status(400).json({ sts: "00", msg: "No feeds found" });
+    res.status(400).json({ sts: "00", msg: "No user found" });
   }
-})
+});
 
 
 
 
+// Get the followers list
+export const getFollowersList = asyncHandler(async (req, res) => {
+
+  const userId = req.params.userId;
+  if (!userId) {
+
+    throw new Error("No user id found")
+  }
+  let userData = await User.findById(userId)
+    .select("followers")
+    .populate({
+      path: "followers",
+      select: "firstName lastName profilePic followers",
+      populate: { path: "profilePic", select: "filePath" },
+    });
+
+  if (userData) {
+
+    // Pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10; // Default page size to 10 if not provided
+
+    // Calculate the skip value
+    const skip = (page - 1) * limit;
+
+    let user = userData.followers;
+
+    if (user.length) {
+
+      //Remove the user with the specified ID from the followers array
+      user = user.filter(data => data._id.toString() != userId);
+
+      // Paginate the followed users
+      user = user.slice(skip, skip + limit);
+
+      const result = [];
+
+      user.forEach((eachUser) => {
+        // Check if user is already following
+        if (eachUser.followers.includes(userId)) {
+          eachUser.isFollowing = true;
+        } else {
+          eachUser.isFollowing = false;
+        }
+        result.push({
+          ...eachUser._doc,
+          isFollowing: eachUser.isFollowing,
+        });
+      });
+
+      res.status(200).json({
+        sts: "01",
+        msg: "Followers fetched successfully",
+        followers: result,
+      });
+    } else {
+      res.status(400).json({ sts: "00", msg: "No followers found" });
+    }
+  } else {
+    res.status(400).json({ sts: "00", msg: "No user found" });
+  }
+});
+
+
+//To get rbd coin of indian price  money
+export const convertINRPriceValueToRBD = asyncHandler(async (req, res) => {
+  // Get current rubidya market place
+  const response = await axios.get(
+    "https://pwyfklahtrh.rubideum.net/api/endPoint1/RBD_INR"
+  );
+  const currentValue = response.data.data.last_price;
+  if (currentValue) {
+    let amounts = [1000, 500, 250];
+    let result = [];
+    //mapping through the amount
+    for (let i = 0; i < amounts.length; i++) {
+      const amount = amounts[i];
+      const convertedAmount = amount / currentValue;
+
+      let position;
+      if (i + 1 == 1) {
+        position = 'st'
+      } else if (i + 1 == 2) {
+        position = 'nd'
+      } else {
+        position = 'rd'
+      }
+      result.push({
+        // rank: i + 1,
+        rank: i + 1 + ` ${position}` + ' prize',
+        indianRupee: amount,
+        convertedAmount: convertedAmount.toFixed(4)
+      });
+    }
+    res.status(200).json({
+      sts: "01",
+      result
+    });
+  } else {
+    res.status(400).json({ sts: "00", msg: "Calculation failed" });
+  }
+});
+
+
+
+
+export const testCron = asyncHandler(async (req, res) => {
+
+  console.log('CRONE____STARTED')
+  // Get the user details
+  const user = await User.findOne({ email: "ajmalshahan23@gmail.com" });
+
+  if (user) {
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      {
+        $push: {
+          transactions: {
+            amount: 1,
+            fromWhom: 'Rubideum',
+            typeofTransaction: 'credit',
+            date: Date.now(),
+            kind: `By getting first  prize`
+
+          }
+        }
+      },
+      { new: true }
+    );
+
+  }
+});
+
+
+
+//Deleting an image
+export const deleteImage = asyncHandler(async (req, res) => {
+
+  const image = req.query.imageId
+
+  //Fetching data from media
+  const imageData = await Media.findById(image)
+  if (!imageData) {
+    return res.status(400).json({ sts: "00", msg: "No image found" });
+  }
+
+  if (imageData?.key) {
+
+    //deleting uploaded image from s3 bucket
+    const deleteMediaFromS3 = await deleteFromS3(imageData.key)
+
+    if (deleteMediaFromS3) {
+
+      // Use findOneAndDelete() to find and delete the media by ID
+      const deletedMedia = await Media.findOneAndDelete({ _id: image });
+
+      if (deletedMedia) {
+
+        res.status(201).json({ sts: "01", msg: "Image deleted successfully" });
+      }
+
+    } else {
+      res.status(400).json({ sts: "01", msg: "Image deletion from s3 bucket having an issue" });
+    }
+
+  } else {
+
+    const deletedMedia = await Media.findOneAndDelete({ _id: image });
+
+    if (deletedMedia) {
+
+      res.status(201).json({ sts: "01", msg: "Image deleted successfullyy" });
+    } else {
+      res.status(400).json({ sts: "00", msg: "image deletion unsuccessfull" })
+    }
+  }
+});
 

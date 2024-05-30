@@ -16,6 +16,10 @@ const mediaSchema = new mongoose.Schema(
     filePath: {
       type: String,
     },
+    
+    key: {
+      type: String,
+    },
     description: {
       type: String,
     },

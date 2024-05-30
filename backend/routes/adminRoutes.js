@@ -16,10 +16,12 @@ import {
   handleActivation,
   searchAllusers,
   searchInVerifications,
+  splitProfitFunctionCron,
   // shareSplitting,
   splitProfit,
-  splitProfitFunctionCron,
 } from "../controllers/adminController.js";
+
+import { getTransactionHistory } from "../controllers/userController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { addPackage, editPackage, getUsersByPackage } from "../controllers/packageController.js";
 import { uploadAndCompress, uploader } from "../utils/uploader.js";
@@ -73,22 +75,24 @@ router.route("/get-verifications-history").get(protect, getVerificationsHistory)
 // Search in verification history
 router.route("/search-in-verifications").get(protect, searchInVerifications);
 
-router.route("/add-monthly-amount").post(splitProfitFunctionCron)
-
 // Share splitting
 // router.route("/share-splitting").get(protect, shareSplitting);
 
-//api's for adding feed (ads from admin)
-router.route("/add-feed").post(protect,uploader.single("media"), uploadAndCompress,addFeed)
+router.route("/add-monthly-amount").post(splitProfitFunctionCron)
 
-//For editing feed added by admin
-router.route("/edit-feed/:feedId").post(protect,editFeed)
+//Getting transaction history of user
+router.route("/transaction-history/:userId").get(protect, getTransactionHistory)
+
+//api's for adding feed (ads from admin)
+router.route("/add-feed").post(protect, uploader.single("media"), uploadAndCompress, addFeed)
 
 //For getting feed added by admin
-router.route("/get-feed").get(protect,getFeed)
+router.route("/get-feed").get(protect, getFeed)
+
+//For editing feed added by admin
+router.route("/edit-feed/:feedId").post(protect, editFeed)
 
 //For deleting feed added by admin
-router.route("/delete-feed").post(protect,deleteFeed)
-
+router.route("/delete-feed").post(protect, deleteFeed)
 
 export default router;

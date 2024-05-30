@@ -16,7 +16,6 @@ import {
   getDirectReferredUsers,
   getFollowers,
   getFollowing,
-  getFundHistory,
   getMedia,
   getProfilePicture,
   getStats,
@@ -32,7 +31,7 @@ import {
   searchAllFollowing,
   // sendOTPTest,
   sendOTPforForget,
-  // syncWallet,
+  syncWallet,
   unfollow,
   // updateNewPackage,
   uploadImage,
@@ -43,7 +42,10 @@ import {
   verifyUser,
   videoUpload,
   getTransactionHistory,
-  getFeed
+  getFollowingList,
+  getFollowersList,
+  convertINRPriceValueToRBD
+
 } from "../controllers/userController.js";
 
 // import {
@@ -115,7 +117,7 @@ router.route("/get-refferal-tree-count").get(protect, refferalTreeCount);
 router.route("/deduct-rubideum").post(protect, deductRubideum);
 
 // Sync unrealised to rubideum wallet
-// router.route("/sync-wallet").get(protect, syncWallet);
+router.route("/sync-wallet").get(protect, syncWallet);
 
 // Get all packages
 router.route("/get-packages").get(protect, getAllPackages);
@@ -187,14 +189,21 @@ router.route("/search-following").get(protect, searchAllFollowing);
 //Searching users from followers list
 router.route("/search-followers").get(protect, searchAllFollowers);
 
-//Deleting an image uploaded
-router.route("/delete-image").delete(protect, deleteImage)
-
-//Getting fund history details of a user
-router.route("/get-fund-history/:userId").get(protect, getFundHistory)
-
 //Getting transaction history of user
 router.route("/get-transaction-history/:userId").get(protect, getTransactionHistory)
+
+
+// Get following list
+router.route("/get-following-list/:userId").get(protect, getFollowingList);
+
+// Get followers list
+router.route("/get-followers-list/:userId").get(protect, getFollowersList);
+
+//Convert Indian price money to rbd value
+router.route("/get-pricemoney").get(protect, convertINRPriceValueToRBD);
+
+//Deleting an image uploaded
+router.route("/delete-image").delete(protect, deleteImage)
 
 // Upload profile picture new
 // router
@@ -203,9 +212,5 @@ router.route("/get-transaction-history/:userId").get(protect, getTransactionHist
 
 // Remove repeating values
 // router.route("/update-package").get(updateNewPackage);
-
-//getting ads from admin(pop-up)
-router.route("/get-feed").get(protect, getFeed)
-
 
 export default router;

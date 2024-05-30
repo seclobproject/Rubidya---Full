@@ -1,11 +1,9 @@
-import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { S3Client,DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import multer from "multer";
 import asyncHandler from "../middleware/asyncHandler.js";
 import sharp from "sharp";
 import path from "path";
-
-
 
 // Generate random string
 const generateRandomString = (length) => {
@@ -54,7 +52,7 @@ export const videoUploader = multer({
 });
 
 export const uploadAndCompressVideo = asyncHandler(async (req, res, next) => {
-
+  
   if (!req.file) {
     return res.status(400).send("No file uploaded");
   }
@@ -104,12 +102,10 @@ export const uploadAndCompress = asyncHandler(async (req, res, next) => {
   }
 
   try {
-
     // Resize and compress image
     const compressedBuffer = await sharp(req.file.buffer)
       .resize({ width: 1000 }) // Resize to desired width
-      .jpeg({ quality: 90 }) // Compress to JPEG format with specified quality
-      // .jpeg({ quality: 90, progressive: true, chromaSubsampling: '4:4:4' })
+      .jpeg({ quality: 80 }) // Compress to JPEG format with specified quality
       .toBuffer(); // Convert the image to a buffer
 
     // Generate random filename
@@ -123,8 +119,8 @@ export const uploadAndCompress = asyncHandler(async (req, res, next) => {
       params: {
         Bucket: "rubidya",
         Key: `images/${randomFilename}`,
-        Body: compressedBuffer,
-        // Body: req.file.buffer
+        //Body: req.file.buffer,
+	Body: compressedBuffer,
       },
     };
 
@@ -138,7 +134,7 @@ export const uploadAndCompress = asyncHandler(async (req, res, next) => {
       req.file.path = uploadResult.Location; // Example path
       req.file.filename = randomFilename;
       req.file.mimetype = "image/jpeg"; // Adjust as necessary
-      req.file.key = uploadResult?.Key
+      req.file.key = uploadResult.Key;
       req.file.buffer = compressedBuffer; // Replace the original buffer with the compressed one
 
       next();
